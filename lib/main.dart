@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'screens/home_screen.dart';
 import 'screens/schedule_screen.dart';
@@ -33,6 +34,9 @@ class CustomSyllabusApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF5A4E80)),
         useMaterial3: true,
       ),
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch, PointerDeviceKind.stylus, PointerDeviceKind.unknown},
+      ),
       home: const AppShell(),
     );
   }
@@ -43,13 +47,23 @@ enum AppState { login, loading, home }
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
+  static AppShellState? of(BuildContext context) {
+    return context.findAncestorStateOfType<AppShellState>();
+  }
+
   @override
-  State<AppShell> createState() => _AppShellState();
+  State<AppShell> createState() => AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
   AppState _appState = AppState.login;
+
+  void goToTab(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   final List<Widget> _screens = const [
     HomeScreen(),

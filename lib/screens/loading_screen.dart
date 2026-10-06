@@ -238,9 +238,10 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
 
           // Central Ripple & Disc System
           Positioned.fill(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                 SizedBox(
                   width: 340,
                   height: 340,
@@ -459,6 +460,7 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                 )
               ],
             ),
+          ),
           ),
         ],
       ),

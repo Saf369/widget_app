@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../main.dart';
 
 class AiChatScreen extends StatelessWidget {
   const AiChatScreen({super.key});
@@ -15,7 +16,6 @@ class AiChatScreen extends StatelessWidget {
           colors: [Color(0xFFF4F2F0), Color(0xFFECE8EE), Color(0xFFE0D8EC)],
           stops: [0.0, 0.6, 1.0],
         ),
-        borderRadius: BorderRadius.all(Radius.circular(44)),
       ),
       child: Stack(
         children: [
@@ -58,9 +58,8 @@ class AiChatScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
-                      // Back
-                      _GlassCircleButton(child: const Text('←',
-                          style: TextStyle(fontSize: 22, color: Color(0xFF141414)))),
+                      // Back Placeholder
+                      const SizedBox(width: 54, height: 54),
                       const Spacer(),
                       Column(
                         children: [
@@ -352,6 +351,67 @@ class AiChatScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          // Coming Soon Overlay
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: const BorderRadius.all(Radius.circular(44)),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+          ),
+          // Coming Soon Banner
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: Transform.rotate(
+                  angle: -1.1,
+                  child: OverflowBox(
+                    maxWidth: 2000,
+                    minWidth: 2000,
+                    child: Container(
+                      height: 52,
+                      color: const Color(0xFF0E0E10),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'COMING SOON  •  AI CHAT  •  COMING SOON  •  AI CHAT  •  COMING SOON  •  AI CHAT  •  COMING SOON  •  AI CHAT  •  COMING SOON',
+                        style: GoogleFonts.urbanist(
+                          fontSize: 14,
+                          letterSpacing: 6,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
+                        softWrap: false,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Unblurred Back Button
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16, top: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    AppShell.of(context)?.goToTab(2);
+                  },
+                  child: const _GlassCircleButton(
+                    child: Text('←',
+                        style: TextStyle(fontSize: 22, color: Color(0xFF141414))),
+                  ),
+                ),
+              ),
             ),
           ),
         ],

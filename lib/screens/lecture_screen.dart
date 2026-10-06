@@ -1,5 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../main.dart';
 
 class LectureScreen extends StatelessWidget {
   const LectureScreen({super.key});
@@ -13,7 +15,6 @@ class LectureScreen extends StatelessWidget {
           end: Alignment.bottomCenter,
           colors: [Color(0xFFD8D0E8), Color(0xFFC8BEDC)],
         ),
-        borderRadius: BorderRadius.all(Radius.circular(44)),
       ),
       child: Stack(
         clipBehavior: Clip.hardEdge,
@@ -90,11 +91,8 @@ class LectureScreen extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
-                      // Back
-                      _GlassButton(
-                        child: const Text('←',
-                            style: TextStyle(fontSize: 22, color: Color(0xFF141414))),
-                      ),
+                      // Back placeholder
+                      const SizedBox(width: 54, height: 54),
                       const Spacer(),
                       // Share
                       _GlassButton(
@@ -332,6 +330,64 @@ class LectureScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          // Coming Soon Overlay
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                color: Colors.white.withOpacity(0.1),
+              ),
+            ),
+          ),
+          // Coming Soon Banner
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Center(
+                child: Transform.rotate(
+                  angle: -1.1,
+                  child: OverflowBox(
+                    maxWidth: 2000,
+                    minWidth: 2000,
+                    child: Container(
+                      height: 52,
+                      color: const Color(0xFF0E0E10),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'COMING SOON  •  LECTURES  •  COMING SOON  •  LECTURES  •  COMING SOON  •  LECTURES  •  COMING SOON  •  LECTURES  •  COMING SOON',
+                        style: GoogleFonts.urbanist(
+                          fontSize: 14,
+                          letterSpacing: 6,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.visible,
+                        softWrap: false,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Unblurred Back Button
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16, top: 4),
+                child: GestureDetector(
+                  onTap: () {
+                    AppShell.of(context)?.goToTab(0);
+                  },
+                  child: const _GlassButton(
+                    child: Text('←',
+                        style: TextStyle(fontSize: 22, color: Color(0xFF141414))),
+                  ),
+                ),
+              ),
             ),
           ),
         ],

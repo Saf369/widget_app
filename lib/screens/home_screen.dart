@@ -17,8 +17,12 @@ class HomeScreen extends StatelessWidget {
         ),
         borderRadius: BorderRadius.all(Radius.circular(44)),
       ),
-      child: Stack(
-        children: [
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SizedBox(
+            height: constraints.maxHeight.floorToDouble(),
+            child: Stack(
+              children: [
           // Background blur ellipses
           Positioned(
             right: -105,
@@ -50,110 +54,19 @@ class HomeScreen extends StatelessWidget {
               child: const SizedBox(),
             ),
           ),
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 120),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 36),
-                  // Top bar
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
-                    child: Row(
-                      children: [
-                        // Avatar
-                        Container(
-                          width: 54,
-                          height: 54,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFB9C2C7),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.person, color: Colors.white, size: 28),
-                        ),
-                        const Spacer(),
-                        // Search
-                        _GlassIconButton(icon: Icons.search_rounded),
-                        const SizedBox(width: 8),
-                        // More
-                        _GlassIconButton(child: _ThreeDots(color: const Color(0xFF1A1A1A))),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 54),
-                  // Greeting
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 36),
-                    child: Text(
-                      'Hello, Anna',
-                      style: GoogleFonts.urbanist(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFF5B5B60),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Title
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 36),
-                    child: Text(
-                      'Your Custom\nSyllabus',
-                      style: GoogleFonts.urbanist(
-                        fontSize: 48,
-                        fontWeight: FontWeight.w400,
-                        height: 50 / 48,
-                        letterSpacing: -0.96,
-                        color: const Color(0xFF141414),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 58),
-                  // Filter row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: Row(
-                      children: [
-                        // Filter button
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              _FilterLine(width: 14),
-                              const SizedBox(height: 4),
-                              _FilterLine(width: 10),
-                              const SizedBox(height: 4),
-                              _FilterLine(width: 6),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                        // Chips
-                        Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Row(
-                              children: const [
-                                _Chip(label: 'Architecture'),
-                                SizedBox(width: 8),
-                                _Chip(label: 'Housing Design'),
-                                SizedBox(width: 8),
-                                _Chip(label: 'Building Tech'),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 44),
+          CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _HomeHeaderDelegate(),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.only(top: 44, bottom: 120),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                   // Spatial Aptitude Card
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -185,27 +98,200 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Faded placeholder row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: Opacity(
-                      opacity: 0.28,
-                      child: Container(
-                        height: 62,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE6E1EE),
-                          borderRadius: BorderRadius.circular(31),
-                          border: Border.all(
-                              color: Colors.white.withOpacity(0.5), width: 1),
-                        ),
-                      ),
+                  // Architectural History Row
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 22),
+                    child: _CourseRow(
+                      color: Color(0xFFDBD3EE),
+                      iconColor: Color(0xFFAFA2D5),
+                      icon: Icons.edit_rounded,
+                      title: 'Architectural History',
+                      subtitle: 'Styles and movements that shaped our citi...',
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Housing Design Card
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 22),
+                    child: _HousingDesignCard(),
                   ),
                 ],
               ),
             ),
           ),
         ],
+      ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final double expandedHeight = 310;
+  final double collapsedHeight = 178;
+
+  @override
+  double get minExtent => collapsedHeight;
+  @override
+  double get maxExtent => expandedHeight;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.vertical(
+        bottom: Radius.circular(40 * progress),
+      ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20 * progress, sigmaY: 20 * progress),
+        child: Container(
+          color: Colors.white.withOpacity(0.6 * progress),
+          padding: EdgeInsets.only(
+            top: MediaQuery.of(context).padding.top + 10,
+            bottom: 20 * progress,
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Row(
+                  children: [
+                    // Avatar
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFB9C2C7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.person, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(width: 12),
+                    // Collapsed Title
+                    if (progress > 0)
+                      Expanded(
+                        child: Opacity(
+                          opacity: progress,
+                          child: Text(
+                            'Your Syllabus',
+                            style: GoogleFonts.urbanist(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFF141414),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      const Spacer(),
+                    // Search
+                    const _GlassIconButton(icon: Icons.search_rounded),
+                    const SizedBox(width: 8),
+                    // More
+                    const _GlassIconButton(child: _ThreeDots(color: Color(0xFF1A1A1A))),
+                  ],
+                ),
+              ),
+              // Expanded Text
+              if (progress < 1.0)
+                Expanded(
+                  child: Opacity(
+                    opacity: 1 - progress,
+                    child: OverflowBox(
+                      maxHeight: double.infinity,
+                      alignment: Alignment.topCenter,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                        const SizedBox(height: 30),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 36),
+                          child: Text(
+                            'Hello, Anna',
+                            style: GoogleFonts.urbanist(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w400,
+                              color: const Color(0xFF5B5B60),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 36),
+                          child: Text(
+                            'Your Custom\nSyllabus',
+                            style: GoogleFonts.urbanist(
+                              fontSize: 48,
+                              fontWeight: FontWeight.w400,
+                              height: 50 / 48,
+                              letterSpacing: -0.96,
+                              color: const Color(0xFF141414),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    ),
+                  ),
+                ),
+              if (progress == 1.0) const Spacer(),
+              // Filter Row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 22),
+                child: Row(
+                  children: [
+                    // Filter button
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          _FilterLine(width: 14),
+                          SizedBox(height: 4),
+                          _FilterLine(width: 10),
+                          SizedBox(height: 4),
+                          _FilterLine(width: 6),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    // Chips
+                    const Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _Chip(label: 'Architecture'),
+                            SizedBox(width: 8),
+                            _Chip(label: 'Housing Design'),
+                            SizedBox(width: 8),
+                            _Chip(label: 'Building Tech'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -729,6 +815,228 @@ class _CourseRow extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Housing Design Card ───────────────────────────────────────────────────
+
+class _HousingDesignCard extends StatelessWidget {
+  const _HousingDesignCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 260,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFCCB8),
+        borderRadius: BorderRadius.circular(36),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Top Section
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Housing Design',
+                      style: GoogleFonts.urbanist(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w400,
+                        color: const Color(0xFF141414),
+                      ),
+                    ),
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.4),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: _ThreeDots(color: Color(0xFF141414)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Planning homes around people, climate,\nand everyday living.',
+                  style: GoogleFonts.urbanist(
+                    fontSize: 14,
+                    height: 1.4,
+                    color: const Color(0xFF704D3F),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Bottom Section
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Left Info
+                Expanded(
+                  flex: 1,
+                  child: Stack(
+                    children: [
+                      // Divider lines
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: Container(height: 1, color: Colors.white.withOpacity(0.3)),
+                      ),
+                      Positioned(
+                        top: 0,
+                        bottom: 0,
+                        right: 0,
+                        child: Container(width: 1, color: Colors.white.withOpacity(0.3)),
+                      ),
+                      Positioned(
+                        top: 60,
+                        left: 0,
+                        right: 0,
+                        child: Container(height: 1, color: Colors.white.withOpacity(0.3)),
+                      ),
+                      // Content
+                      Positioned(
+                        top: 10,
+                        left: 20,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Pages', style: GoogleFonts.urbanist(fontSize: 12, color: const Color(0xFF886355))),
+                            Text('18', style: GoogleFonts.urbanist(fontSize: 32, fontWeight: FontWeight.w400, color: const Color(0xFF141414), height: 1.0)),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16,
+                        left: 20,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFF886355)),
+                            const SizedBox(width: 4),
+                            Text('2 Hour', style: GoogleFonts.urbanist(fontSize: 12, color: const Color(0xFF886355))),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text('Videos', style: GoogleFonts.urbanist(fontSize: 12, color: const Color(0xFF886355))),
+                            Text('6', style: GoogleFonts.urbanist(fontSize: 32, fontWeight: FontWeight.w400, color: const Color(0xFF141414), height: 1.0)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Right Artwork
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    color: const Color(0xFF7EB0A3),
+                    child: Stack(
+                      children: [
+                        // Sun
+                        Positioned(
+                          top: 10,
+                          right: 16,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: const BoxDecoration(color: Color(0xFFEBD08E), shape: BoxShape.circle),
+                          ),
+                        ),
+                        // Dark Building
+                        Positioned(
+                          bottom: 0,
+                          right: 10,
+                          child: Container(
+                            width: 36,
+                            height: 60,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF1B4241),
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                            ),
+                          ),
+                        ),
+                        // Peach Building
+                        Positioned(
+                          bottom: 0,
+                          right: 30,
+                          child: Container(
+                            width: 42,
+                            height: 100,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEFCCB8),
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [Container(width: 6, height: 6, color: Color(0xFFC09D8B)), Container(width: 6, height: 6, color: Color(0xFFC09D8B))]),
+                                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [Container(width: 6, height: 6, color: Color(0xFFC09D8B)), Container(width: 6, height: 6, color: Color(0xFFC09D8B))]),
+                                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [Container(width: 6, height: 6, color: Color(0xFFC09D8B)), Container(width: 6, height: 6, color: Color(0xFFC09D8B))]),
+                                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [Container(width: 6, height: 6, color: Color(0xFFC09D8B)), Container(width: 6, height: 6, color: Color(0xFFC09D8B))]),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // White Building
+                        Positioned(
+                          bottom: 0,
+                          left: 20,
+                          child: Container(
+                            width: 46,
+                            height: 80,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEAF5F0),
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [Container(width: 8, height: 8, color: Color(0xFF90C2B6)), Container(width: 8, height: 8, color: Color(0xFF90C2B6))]),
+                                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [Container(width: 8, height: 8, color: Color(0xFF90C2B6)), Container(width: 8, height: 8, color: Color(0xFF90C2B6))]),
+                                Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [Container(width: 8, height: 8, color: Color(0xFF90C2B6)), Container(width: 8, height: 8, color: Color(0xFF90C2B6))]),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Arrow Button
+                        Positioned(
+                          bottom: 16,
+                          right: 16,
+                          child: Container(
+                            width: 34,
+                            height: 34,
+                            decoration: const BoxDecoration(color: Color(0xFF141414), shape: BoxShape.circle),
+                            child: const Center(child: Icon(Icons.arrow_outward_rounded, color: Colors.white, size: 16)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -16,98 +16,137 @@ class ScheduleScreen extends StatelessWidget {
           // Header
           Container(
             width: double.infinity,
-            decoration: const BoxDecoration(
-              color: Color(0xFFF7F6F2),
-              border: Border(
-                bottom: BorderSide(
-                  color: Color(0xFFE2E0D8),
-                  width: 1.0,
-                ),
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(32),
+                bottomRight: Radius.circular(32),
               ),
+              border: Border.all(color: const Color(0xFFF1F5F9).withOpacity(0.8), width: 1),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 40,
+                  offset: const Offset(0, 20),
+                  spreadRadius: -15,
+                ),
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.02),
+                  blurRadius: 1,
+                  spreadRadius: 1,
+                ),
+              ],
             ),
             child: SafeArea(
               bottom: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Month & Add button
                     Row(
                       children: [
-                        Text(
-                          'June, 2026',
-                          style: GoogleFonts.urbanist(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF141414),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.keyboard_arrow_down_rounded,
-                            color: Color(0xFF141414), size: 22),
-                        const Spacer(),
-                        // Add button
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: const Color(0xFFE2E0D8), width: 1.5),
-                          ),
-                          child: const Icon(Icons.add_rounded,
-                              color: Color(0xFF141414), size: 24),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // View Mode row
-                    Row(
-                      children: [
-                        Text(
-                          'VIEW MODE',
-                          style: GoogleFonts.urbanist(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.2,
-                            color: const Color(0xFF94949C),
-                          ),
-                        ),
-                        const Spacer(),
-                        Container(
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE9E8E3),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
+                        GestureDetector(
+                          onTap: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (context) => const _MonthViewSheet(),
+                            );
+                          },
                           child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: const [
-                              _ViewModeTab(label: 'Hour', isActive: false),
-                              _ViewModeTab(label: 'Day', isActive: true),
-                              _ViewModeTab(label: 'Week', isActive: false),
+                            children: [
+                              Text(
+                                'June, 2026',
+                                style: GoogleFonts.urbanist(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFF111315),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.keyboard_arrow_down,
+                                  color: Color(0xFF111315), size: 28),
                             ],
                           ),
                         ),
+                        const Spacer(),
+                        // Add button
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFAFAFA),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: const Color(0xFFECECED), width: 1.0),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.add,
+                              color: Color(0xFF111315), size: 24),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 28),
                     // Week days
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: const [
-                          _DayCell(day: 'Mon', date: '11', isActive: false),
-                          _DayCell(day: 'Tue', date: '11', isActive: false),
-                          _DayCell(day: 'Wed', date: '12', isActive: false),
-                          _DayCell(day: 'Thu', date: '13', isActive: false),
-                          _DayCell(day: 'Fri', date: '14', isActive: true),
-                          _DayCell(day: 'Sat', date: '15', isActive: false),
-                          _DayCell(day: 'Sun', date: '16', isActive: false),
-                        ],
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: const [
+                        _DayCell(day: 'Mon', date: '11', isActive: false),
+                        _DayCell(day: 'Tue', date: '11', isActive: false),
+                        _DayCell(day: 'Wed', date: '12', isActive: false),
+                        _DayCell(day: 'Thu', date: '13', isActive: false),
+                        _DayCell(day: 'Fri', date: '14', isActive: true),
+                        _DayCell(day: 'Sat', date: '15', isActive: false),
+                        _DayCell(day: 'Sun', date: '16', isActive: false),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF111315),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Friday, June 14, 2026',
+                              style: GoogleFonts.urbanist(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF111315),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          'SELECTED',
+                          style: GoogleFonts.urbanist(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 1.0,
+                            color: const Color(0xFF94A3B8),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -194,12 +233,19 @@ class _DayCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 52,
-      height: 64,
-      margin: const EdgeInsets.symmetric(horizontal: 4),
+      width: 46,
+      height: 56, // aspect 1/1.22
       decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF141414) : const Color(0xFFEFEFEA),
+        color: isActive ? const Color(0xFF111315) : const Color(0xFFF2F3F4),
         borderRadius: BorderRadius.circular(26),
+        boxShadow: isActive ? [
+          BoxShadow(
+            color: const Color(0xFF111315).withOpacity(0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+            spreadRadius: -2,
+          )
+        ] : null,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -207,18 +253,20 @@ class _DayCell extends StatelessWidget {
           Text(
             day,
             style: GoogleFonts.urbanist(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: isActive ? Colors.white : const Color(0xFF7A7A80),
+              fontSize: 12,
+              fontWeight: isActive ? FontWeight.w500 : FontWeight.w400,
+              color: isActive ? Colors.white.withOpacity(0.9) : const Color(0xFF65696E),
+              letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             date,
             style: GoogleFonts.urbanist(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: isActive ? Colors.white : const Color(0xFF141414),
+              fontSize: 19,
+              fontWeight: FontWeight.w400,
+              height: 1.0,
+              color: isActive ? Colors.white : const Color(0xFF111315),
             ),
           ),
         ],
@@ -586,6 +634,95 @@ class _ThreeDots extends StatelessWidget {
           margin: EdgeInsets.only(right: i < 2 ? 3 : 0),
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
+      ),
+    );
+  }
+}
+
+class _MonthViewSheet extends StatelessWidget {
+  const _MonthViewSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      padding: const EdgeInsets.only(top: 12, left: 24, right: 24, bottom: 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 48,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFE0E0E0),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'June, 2026',
+            style: GoogleFonts.urbanist(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF111315),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
+                .map((day) => Expanded(
+                      child: Center(
+                        child: Text(
+                          day,
+                          style: GoogleFonts.urbanist(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF757575),
+                          ),
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 30, // June has 30 days. June 1, 2026 is a Monday.
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 7,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+            ),
+            itemBuilder: (context, index) {
+              final day = index + 1;
+              final isSelected = day == 14;
+              return Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF5B4AE4) : Colors.transparent,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  day.toString(),
+                  style: GoogleFonts.urbanist(
+                    fontSize: 16,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? Colors.white : const Color(0xFF111315),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+        ],
       ),
     );
   }
