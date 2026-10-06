@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -65,7 +66,29 @@ class _AppShellState extends State<AppShell> {
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          _screens[_selectedIndex],
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            switchInCurve: Curves.easeOutQuint,
+            switchOutCurve: Curves.easeInQuint,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.04), // Gentle slide up
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: SizedBox(
+              key: ValueKey<int>(_selectedIndex),
+              width: double.infinity,
+              height: double.infinity,
+              child: _screens[_selectedIndex],
+            ),
+          ),
           Align(
             alignment: Alignment.bottomCenter,
             child: Padding(
@@ -91,110 +114,80 @@ class _BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const items = [
-      (Icons.list_rounded, 'Home'),
-      (Icons.calendar_today_rounded, 'Schedule'),
-      (Icons.play_circle_outline_rounded, 'Lecture'),
-      (Icons.chat_bubble_outline_rounded, 'AI Chat'),
-      (Icons.grid_view_rounded, 'Settings'),
+      Icons.home_rounded,
+      Icons.calendar_today_rounded,
+      Icons.play_circle_outline_rounded,
+      Icons.chat_bubble_outline_rounded,
+      Icons.grid_view_rounded,
     ];
 
-    return Container(
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withOpacity(0.28),
-            Colors.white.withOpacity(0.06),
-            Colors.white.withOpacity(0.20),
-          ],
-          stops: const [0.0, 0.30, 0.80],
-        ),
-        borderRadius: BorderRadius.circular(40),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.95),
-          width: 1.2,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4D4073).withOpacity(0.18),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(50),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(50),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.40),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF1E1B4B).withOpacity(0.08),
+                blurRadius: 45,
+                offset: const Offset(0, 20),
+                spreadRadius: -12,
+              ),
+            ],
           ),
-          const BoxShadow(
-            color: Color(0x26FFFFFF),
-            blurRadius: 3,
-            offset: Offset(0, 1.5),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(34),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(items.length, (i) {
-            final isActive = selectedIndex == i;
-            return GestureDetector(
-              onTap: () => onTap(i),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                curve: Curves.easeInOut,
-                width: isActive ? 98 : 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? const Color(0xFF0B0B0D)
-                      : Colors.white.withOpacity(0.14),
-                  borderRadius: BorderRadius.circular(26),
-                  border: isActive
-                      ? null
-                      : Border.all(color: Colors.white.withOpacity(0.6), width: 1),
-                  boxShadow: isActive
-                      ? null
-                      : [
-                          BoxShadow(
-                            color: Colors.white.withOpacity(0.6),
-                            blurRadius: 2,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                ),
-                child: ClipRect(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const NeverScrollableScrollPhysics(),
-                    child: Container(
-                      alignment: Alignment.center,
-                      width: 98, // Give it enough space to render fully; AnimatedContainer will clip the view
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            items[i].$1,
-                            color: isActive ? Colors.white : const Color(0xFF1A1A1A).withOpacity(0.7),
-                            size: 20,
-                          ),
-                          if (isActive) ...[
-                            const SizedBox(width: 6),
-                            Text(
-                              items[i].$2,
-                              style: GoogleFonts.urbanist(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(items.length, (i) {
+              final isActive = selectedIndex == i;
+              
+              return GestureDetector(
+                onTap: () => onTap(i),
+                child: Padding(
+                  padding: EdgeInsets.only(left: i == 0 ? 0 : 8),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 900),
+                    curve: const Cubic(0.16, 1, 0.3, 1), // Ultra-fluid slow glide
+                    width: isActive ? 68 : 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? const Color(0xFF111315)
+                          : Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: isActive ? const Color(0xFF111315) : Colors.white.withOpacity(0.25),
+                        width: 1,
+                      ),
+                      boxShadow: isActive
+                          ? [
+                              const BoxShadow(
+                                color: Color(0x52111315), // 0.32 opacity
+                                blurRadius: 16,
+                                offset: Offset(0, 4),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Center(
+                      child: Icon(
+                        items[i],
+                        color: isActive ? Colors.white : const Color(0xFF334155),
+                        size: 20,
                       ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            }),
+          ),
         ),
       ),
     );
