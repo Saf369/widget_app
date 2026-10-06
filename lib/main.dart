@@ -93,6 +93,7 @@ class _AppShellState extends State<AppShell> {
     return Scaffold(
       key: const ValueKey('app_home_scaffold'),
       backgroundColor: Colors.transparent,
+      extendBody: true, // Keeping this just in case they have SafeArea elsewhere
       body: Stack(
         children: [
           AnimatedSwitcher(
@@ -120,11 +121,13 @@ class _AppShellState extends State<AppShell> {
           ),
           Align(
             alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: _BottomNavBar(
-                selectedIndex: _selectedIndex,
-                onTap: (i) => setState(() => _selectedIndex = i),
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: _BottomNavBar(
+                  selectedIndex: _selectedIndex,
+                  onTap: (i) => setState(() => _selectedIndex = i),
+                ),
               ),
             ),
           ),
@@ -151,37 +154,22 @@ class _BottomNavBar extends StatelessWidget {
     ];
 
     return Container(
-      constraints: const BoxConstraints(maxWidth: 440),
-      height: 72,
+      height: 64,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(36),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF766694).withOpacity(0.12),
-            blurRadius: 32,
-            offset: const Offset(0, 16),
-            spreadRadius: -8,
-          ),
-          BoxShadow(
-            color: const Color(0xFF111315).withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-            spreadRadius: -2,
-          ),
-        ],
+        borderRadius: BorderRadius.circular(32),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(36),
+        borderRadius: BorderRadius.circular(32),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.85),
-              borderRadius: BorderRadius.circular(36),
+              color: Colors.transparent, // Completely transparent fill
+              borderRadius: BorderRadius.circular(32),
               border: Border.all(
-                color: Colors.white.withOpacity(0.95),
+                color: Colors.white.withOpacity(0.05), // Ultra faint outer border
                 width: 1,
               ),
             ),
@@ -193,26 +181,26 @@ class _BottomNavBar extends StatelessWidget {
                   onTap: () => onTap(i),
                   behavior: HitTestBehavior.opaque,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 350),
+                    duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOutCubic,
-                    width: isActive ? 100 : 52,
-                    height: 52,
+                    width: isActive ? 84 : 46,
+                    height: isActive ? 50 : 46,
                     decoration: BoxDecoration(
-                      color: isActive ? const Color(0xFF101114) : Colors.transparent,
-                      borderRadius: BorderRadius.circular(26),
+                      color: isActive ? const Color(0xFF0B0B0D) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(25),
                       border: isActive
                           ? null
                           : Border.all(
-                              color: Colors.white,
-                              width: 1.5,
+                              color: Colors.white.withOpacity(0.60), // Whiter inactive circles
+                              width: 1,
                             ),
                     ),
                     child: Center(
                       child: AnimatedTheme(
                         data: Theme.of(context).copyWith(
                           iconTheme: IconThemeData(
-                            color: isActive ? Colors.white : const Color(0xFF101114),
-                            size: 24,
+                            color: isActive ? Colors.white : const Color(0xFF1A1A1F),
+                            size: 20,
                           ),
                         ),
                         child: Icon(items[i]),

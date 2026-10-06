@@ -392,12 +392,13 @@ class _SocialButton extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
         child: Container(
           height: 54,
-          padding: const EdgeInsets.symmetric(horizontal: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 12), // Reduced padding slightly
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.65),
             borderRadius: BorderRadius.circular(27),
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center, // Center contents
             children: [
               Container(
                 width: 30,
@@ -417,13 +418,19 @@ class _SocialButton extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              Text(
-                label,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w500,
-                  color: const Color(0xFF111113),
+              const SizedBox(width: 8), // Reduced gap slightly
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF111113),
+                    ),
+                  ),
                 ),
               ),
             ],
