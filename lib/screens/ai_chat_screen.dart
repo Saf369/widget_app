@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -41,6 +42,12 @@ class AiChatScreen extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: const Color(0xFFA8A2B2).withOpacity(0.24),
               ),
+            ),
+          ),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+              child: const SizedBox(),
             ),
           ),
           SafeArea(

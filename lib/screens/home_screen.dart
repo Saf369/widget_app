@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -41,6 +42,12 @@ class HomeScreen extends StatelessWidget {
                 color: const Color(0xFFBDB8C4).withOpacity(0.14),
                 borderRadius: BorderRadius.circular(100),
               ),
+            ),
+          ),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+              child: const SizedBox(),
             ),
           ),
           SafeArea(

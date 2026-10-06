@@ -8,6 +8,7 @@ import 'screens/lecture_screen.dart';
 import 'screens/ai_chat_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/loading_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,8 @@ class CustomSyllabusApp extends StatelessWidget {
   }
 }
 
+enum AppState { login, loading, home }
+
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -46,7 +49,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
-  bool _showLogin = true;
+  AppState _appState = AppState.login;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -58,11 +61,37 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    if (_showLogin) {
-      return LoginScreen(onLogin: () => setState(() => _showLogin = false));
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 600),
+      switchInCurve: Curves.easeInOutCubic,
+      switchOutCurve: Curves.easeInOutCubic,
+      transitionBuilder: (child, animation) {
+        return FadeTransition(
+          opacity: animation,
+          child: child,
+        );
+      },
+      child: _buildAppStateWidget(),
+    );
+  }
+
+  Widget _buildAppStateWidget() {
+    if (_appState == AppState.login) {
+      return LoginScreen(
+        key: const ValueKey('app_login_screen'),
+        onLogin: () => setState(() => _appState = AppState.loading),
+      );
+    }
+
+    if (_appState == AppState.loading) {
+      return LoadingScreen(
+        key: const ValueKey('app_loading_screen'),
+        onComplete: () => setState(() => _appState = AppState.home),
+      );
     }
 
     return Scaffold(
+      key: const ValueKey('app_home_scaffold'),
       backgroundColor: Colors.transparent,
       body: Stack(
         children: [
@@ -124,22 +153,22 @@ class _BottomNavBar extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(50),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.10),
+            color: Colors.white.withOpacity(0.32),
             borderRadius: BorderRadius.circular(50),
             border: Border.all(
-              color: Colors.white.withOpacity(0.40),
+              color: Colors.white.withOpacity(0.50),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF1E1B4B).withOpacity(0.08),
-                blurRadius: 45,
+                color: const Color(0xFF4C4164).withOpacity(0.15),
+                blurRadius: 40,
                 offset: const Offset(0, 20),
-                spreadRadius: -12,
+                spreadRadius: -10,
               ),
             ],
           ),
@@ -151,30 +180,30 @@ class _BottomNavBar extends StatelessWidget {
               return GestureDetector(
                 onTap: () => onTap(i),
                 child: Padding(
-                  padding: EdgeInsets.only(left: i == 0 ? 0 : 8),
+                  padding: EdgeInsets.only(left: i == 0 ? 0 : 6),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 900),
-                    curve: const Cubic(0.16, 1, 0.3, 1), // Ultra-fluid slow glide
+                    duration: const Duration(milliseconds: 300),
+                    curve: const Cubic(0.16, 1, 0.3, 1),
                     width: isActive ? 68 : 44,
                     height: 44,
                     decoration: BoxDecoration(
                       color: isActive
                           ? const Color(0xFF111315)
-                          : Colors.white.withOpacity(0.08),
+                          : Colors.white.withOpacity(0.25),
                       borderRadius: BorderRadius.circular(22),
                       border: Border.all(
-                        color: isActive ? const Color(0xFF111315) : Colors.white.withOpacity(0.25),
+                        color: isActive ? Colors.transparent : Colors.white.withOpacity(0.45),
                         width: 1,
                       ),
                       boxShadow: isActive
                           ? [
                               const BoxShadow(
-                                color: Color(0x52111315), // 0.32 opacity
-                                blurRadius: 16,
+                                color: Colors.black26,
+                                blurRadius: 10,
                                 offset: Offset(0, 4),
                               )
                             ]
-                          : null,
+                          : [],
                     ),
                     child: Center(
                       child: Icon(

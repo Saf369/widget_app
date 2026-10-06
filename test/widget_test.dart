@@ -1,30 +1,44 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:widget_native/main.dart';
+import 'package:custom_syllabus/main.dart';
+import 'package:custom_syllabus/screens/login_screen.dart';
+import 'package:custom_syllabus/screens/loading_screen.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('LoginScreen to LoadingScreen transition verification', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // 1. Launch App
+    await tester.pumpWidget(const CustomSyllabusApp());
+    await tester.pump(const Duration(milliseconds: 100));
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+    // 2. Verify LoginScreen elements
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.text('Welcome to'), findsOneWidget);
+    expect(find.text('Custom Syllabus'), findsOneWidget);
+    expect(find.text('Log in to your account'), findsOneWidget);
+
+    // Toggle password visibility
+    expect(find.text('Show'), findsOneWidget);
+    await tester.tap(find.text('Show'));
     await tester.pump();
+    expect(find.text('Hide'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Tap Log in
+    await tester.ensureVisible(find.text('Log in'));
+    await tester.tap(find.text('Log in'));
+    await tester.pump();
+    expect(find.text('Signing in...'), findsOneWidget);
+
+    // Advance through state transition into LoadingScreen
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 650));
+    expect(find.byType(LoadingScreen), findsOneWidget);
+
+    // Verify ripple animation is running in LoadingScreen
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Custom Syllabus'), findsOneWidget);
   });
 }

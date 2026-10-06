@@ -9,10 +9,10 @@ class LoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Fallback background
+      backgroundColor: const Color(0xFFECE8F4),
       body: Container(
         decoration: const BoxDecoration(
-          color: Color(0xFFECE8F0),
+          color: Color(0xFFECE8F4),
           borderRadius: BorderRadius.all(Radius.circular(48)),
         ),
       child: Stack(
@@ -37,6 +37,12 @@ class LoginScreen extends StatelessWidget {
             left: -50,
             bottom: -50,
             child: _Blob(color: const Color(0xFFCFC5DD).withOpacity(0.9), size: 350),
+          ),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+              child: const SizedBox(),
+            ),
           ),
           SafeArea(
             child: Column(
