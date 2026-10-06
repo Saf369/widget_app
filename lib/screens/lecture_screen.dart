@@ -163,33 +163,35 @@ class LectureScreen extends StatelessWidget {
                       ),
                       border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
                     ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 16),
-                        _LessonRow(
-                          title: 'Perspective Basics',
-                          subtitle: 'How depth and distance are repr...',
-                          duration: '23:28',
-                        ),
-                        const SizedBox(height: 4),
-                        _LessonRow(
-                          title: 'Mental Folding Exercises',
-                          subtitle: 'Train your ability to imagine folde...',
-                          duration: '15:48',
-                        ),
-                        const SizedBox(height: 4),
-                        _LessonRow(
-                          title: 'Spatial Logic in Design',
-                          subtitle: 'Connecting geometry, structure...',
-                          duration: '12:16',
-                        ),
-                        const SizedBox(height: 4),
-                        _LessonRow(
-                          title: 'Design Theory',
-                          subtitle: 'Connecting geometry, structure...',
-                          duration: '15:25',
-                        ),
-                      ],
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 16),
+                          _LessonRow(
+                            title: 'Perspective Basics',
+                            subtitle: 'How depth and distance are repr...',
+                            duration: '23:28',
+                          ),
+                          const SizedBox(height: 4),
+                          _LessonRow(
+                            title: 'Mental Folding Exercises',
+                            subtitle: 'Train your ability to imagine folde...',
+                            duration: '15:48',
+                          ),
+                          const SizedBox(height: 4),
+                          _LessonRow(
+                            title: 'Spatial Logic in Design',
+                            subtitle: 'Connecting geometry, structure...',
+                            duration: '12:16',
+                          ),
+                          const SizedBox(height: 4),
+                          _LessonRow(
+                            title: 'Design Theory',
+                            subtitle: 'Connecting geometry, structure...',
+                            duration: '15:25',
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

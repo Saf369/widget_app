@@ -143,79 +143,85 @@ class _BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const items = [
-      Icons.home_rounded,
-      Icons.calendar_today_rounded,
+      Icons.home_outlined,
+      Icons.calendar_today_outlined,
       Icons.play_circle_outline_rounded,
       Icons.chat_bubble_outline_rounded,
-      Icons.grid_view_rounded,
+      Icons.grid_view_outlined,
     ];
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(50),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.32),
-            borderRadius: BorderRadius.circular(50),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.50),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF4C4164).withOpacity(0.15),
-                blurRadius: 40,
-                offset: const Offset(0, 20),
-                spreadRadius: -10,
-              ),
-            ],
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 440),
+      height: 72,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(36),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF766694).withOpacity(0.12),
+            blurRadius: 32,
+            offset: const Offset(0, 16),
+            spreadRadius: -8,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(items.length, (i) {
-              final isActive = selectedIndex == i;
-              
-              return GestureDetector(
-                onTap: () => onTap(i),
-                child: Padding(
-                  padding: EdgeInsets.only(left: i == 0 ? 0 : 6),
+          BoxShadow(
+            color: const Color(0xFF111315).withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+            spreadRadius: -2,
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(36),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.85),
+              borderRadius: BorderRadius.circular(36),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.95),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(items.length, (i) {
+                final isActive = selectedIndex == i;
+                return GestureDetector(
+                  onTap: () => onTap(i),
+                  behavior: HitTestBehavior.opaque,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
-                    curve: const Cubic(0.16, 1, 0.3, 1),
-                    width: isActive ? 68 : 44,
-                    height: 44,
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeOutCubic,
+                    width: isActive ? 100 : 52,
+                    height: 52,
                     decoration: BoxDecoration(
-                      color: isActive
-                          ? const Color(0xFF111315)
-                          : Colors.white.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: isActive ? Colors.transparent : Colors.white.withOpacity(0.45),
-                        width: 1,
-                      ),
-                      boxShadow: isActive
-                          ? [
-                              const BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 10,
-                                offset: Offset(0, 4),
-                              )
-                            ]
-                          : [],
+                      color: isActive ? const Color(0xFF101114) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(26),
+                      border: isActive
+                          ? null
+                          : Border.all(
+                              color: Colors.white,
+                              width: 1.5,
+                            ),
                     ),
                     child: Center(
-                      child: Icon(
-                        items[i],
-                        color: isActive ? Colors.white : const Color(0xFF334155),
-                        size: 20,
+                      child: AnimatedTheme(
+                        data: Theme.of(context).copyWith(
+                          iconTheme: IconThemeData(
+                            color: isActive ? Colors.white : const Color(0xFF101114),
+                            size: 24,
+                          ),
+                        ),
+                        child: Icon(items[i]),
                       ),
                     ),
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
         ),
       ),
