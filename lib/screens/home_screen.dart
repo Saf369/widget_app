@@ -56,6 +56,7 @@ class HomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: 36),
                   // Top bar
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
@@ -80,7 +81,7 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 54),
                   // Greeting
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 36),
@@ -108,7 +109,7 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 58),
                   // Filter row
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
@@ -152,7 +153,7 @@ class HomeScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 44),
                   // Spatial Aptitude Card
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
