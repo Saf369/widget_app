@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -7,331 +8,302 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFDCD5E6), Color(0xFFF3F0EE), Color(0xFFEEEBE8)],
-          stops: [0.0, 0.5, 1.0],
+    return Scaffold(
+      backgroundColor: Colors.white, // Fallback background
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFECE8F0),
+          borderRadius: BorderRadius.all(Radius.circular(48)),
         ),
-        borderRadius: BorderRadius.all(Radius.circular(44)),
-      ),
       child: Stack(
         children: [
-          // Background glows
+          // Background blobs simulating the organic iOS-like gradients
           Positioned(
-            right: -105,
-            top: -170,
-            child: Container(
-              width: 330,
-              height: 420,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFA8A2B2).withOpacity(0.26),
-              ),
-            ),
+            right: -80,
+            top: -40,
+            child: _Blob(color: const Color(0xFFFDF8F4).withOpacity(0.8), size: 300),
           ),
           Positioned(
-            left: -110,
-            bottom: 0,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFCBBFDD).withOpacity(0.4),
-              ),
-            ),
+            left: -100,
+            top: 150,
+            child: _Blob(color: const Color(0xFFEDE6EE).withOpacity(0.8), size: 300),
           ),
           Positioned(
-            right: 100,
-            bottom: 150,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFD9A9B4).withOpacity(0.35),
-              ),
-            ),
+            right: -40,
+            bottom: 200,
+            child: _Blob(color: const Color(0xFFFAE2E5).withOpacity(0.8), size: 250),
+          ),
+          Positioned(
+            left: -50,
+            bottom: -50,
+            child: _Blob(color: const Color(0xFFCFC5DD).withOpacity(0.9), size: 350),
           ),
           SafeArea(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(22, 16, 22, 0),
-                    child: Row(
+            child: Column(
+              children: [
+                // Scrollable main content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Logo
-                        Container(
-                          width: 54,
-                          height: 54,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0E0E10),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.6), width: 1),
-                          ),
-                          child: Center(
-                            child: Text('S',
-                                style: GoogleFonts.urbanist(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white)),
-                          ),
-                        ),
-                        const Spacer(),
-                        // Help
-                        _GlassButton(
-                          child: Text('?',
-                              style: GoogleFonts.urbanist(
-                                  fontSize: 20, color: const Color(0xFF141414))),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 80),
-                  // Welcome back
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 36),
-                    child: Text('Welcome back',
-                        style: GoogleFonts.urbanist(
-                            fontSize: 18, color: const Color(0xFF5B5B60))),
-                  ),
-                  const SizedBox(height: 4),
-                  // Title
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 35),
-                    child: Text('Log in to your\nSyllabus',
-                        style: GoogleFonts.urbanist(
-                          fontSize: 48,
-                          fontWeight: FontWeight.w400,
-                          height: 50 / 48,
-                          color: const Color(0xFF141414),
-                        )),
-                  ),
-                  const SizedBox(height: 32),
-                  // Credentials Card
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.62),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                            color: Colors.white.withOpacity(0.9), width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF4D4073).withOpacity(0.12),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          // Email field
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(14, 11, 16, 11),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 38,
-                                  height: 38,
+                        // Top row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Sparkle icon
+                            Container(
+                              width: 52,
+                              height: 52,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF111113),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+                              ),
+                            ),
+                            // Help icon
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(26),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                                child: Container(
+                                  width: 52,
+                                  height: 52,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFE8CACF),
+                                    color: Colors.white.withOpacity(0.7),
                                     shape: BoxShape.circle,
                                   ),
                                   child: Center(
-                                    child: Text('@',
-                                        style: GoogleFonts.urbanist(
-                                            fontSize: 17,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.white)),
+                                    child: Text('?',
+                                        style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 20, color: const Color(0xFF111113))),
                                   ),
                                 ),
-                                const SizedBox(width: 14),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Email',
-                                        style: GoogleFonts.urbanist(
-                                            fontSize: 12,
-                                            color: const Color(0xFF5A4E80))),
-                                    Text('anna@studio.edu',
-                                        style: GoogleFonts.urbanist(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF141414))),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Separator
-                          Padding(
-                            padding: const EdgeInsets.only(left: 66),
-                            child: Container(
-                                height: 1,
-                                color: const Color(0xFFD9D7D3).withOpacity(0.8)),
-                          ),
-                          // Password field
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(14, 11, 16, 11),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFE8CACF),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.lock_outline_rounded,
-                                      color: Colors.white, size: 18),
-                                ),
-                                const SizedBox(width: 14),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('Password',
-                                        style: GoogleFonts.urbanist(
-                                            fontSize: 12,
-                                            color: const Color(0xFF5A4E80))),
-                                    Text('••••••••••',
-                                        style: GoogleFonts.urbanist(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w500,
-                                            color: const Color(0xFF141414))),
-                                  ],
-                                ),
-                                const Spacer(),
-                                Text('Show',
-                                    style: GoogleFonts.urbanist(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                        color: const Color(0xFF5A4E80))),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  // Forgot password
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(0, 10, 22, 0),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text('Forgot password?',
-                          style: GoogleFonts.urbanist(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF5A4E80))),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Log in button
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: GestureDetector(
-                      onTap: onLogin,
-                      child: Container(
-                        height: 58,
-                        padding: const EdgeInsets.fromLTRB(30, 8, 8, 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0E0E10),
-                          borderRadius: BorderRadius.circular(29),
-                        ),
-                        child: Row(
-                          children: [
-                            Text('Log in',
-                                style: GoogleFonts.urbanist(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white)),
-                            const Spacer(),
-                            Container(
-                              width: 42,
-                              height: 42,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text('→',
-                                    style: GoogleFonts.urbanist(
-                                        fontSize: 18,
-                                        color: const Color(0xFF0E0E10))),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Divider
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: Row(
-                      children: [
-                        Expanded(
-                            child: Container(
-                                height: 1,
-                                color: const Color(0xFFD9D7D3).withOpacity(0.9))),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text('or continue with',
-                              style: GoogleFonts.urbanist(
-                                  fontSize: 13, color: const Color(0xFF5B5B60))),
+                        const SizedBox(height: 32),
+                        // Welcome headers
+                        Text(
+                          'Welcome back',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 17,
+                            color: const Color(0xFF6C6B75),
+                          ),
                         ),
-                        Expanded(
-                            child: Container(
-                                height: 1,
-                                color: const Color(0xFFD9D7D3).withOpacity(0.9))),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Social row
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: Row(
-                      children: [
-                        Expanded(child: _SocialButton(label: 'Google')),
-                        const SizedBox(width: 9),
-                        Expanded(child: _SocialButton(label: 'Apple')),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // Sign up row
-                  Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('New to Custom Syllabus?',
-                            style: GoogleFonts.urbanist(
-                                fontSize: 14, color: const Color(0xFF5B5B60))),
-                        const SizedBox(width: 5),
-                        Text('Sign up',
-                            style: GoogleFonts.urbanist(
+                        const SizedBox(height: 2),
+                        Text(
+                          'Log in',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 44,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -1,
+                            color: const Color(0xFF111113),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        // Email Input
+                        _InputField(
+                          label: 'Email',
+                          value: 'anna@studio.edu',
+                          trailing: Container(
+                            width: 22,
+                            height: 22,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF111113),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check_rounded, color: Colors.white, size: 14),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        // Password Input
+                        _InputField(
+                          label: 'Password',
+                          value: 'supersecretpass',
+                          isPassword: true,
+                          trailing: Text(
+                            'Show',
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: const Color(0xFF141414),
-                            )),
+                              color: const Color(0xFF534E73),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // Forgot Password
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            'Forgot password?',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13.5,
+                              color: const Color(0xFF534E73),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // Log In Button
+                        GestureDetector(
+                          onTap: onLogin,
+                          child: Container(
+                            height: 62,
+                            padding: const EdgeInsets.only(left: 28, right: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF111113),
+                              borderRadius: BorderRadius.circular(31),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                )
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Log in',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    color: Color(0xFF111113),
+                                    size: 20,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        // Divider
+                        Row(
+                          children: [
+                            Expanded(child: Container(height: 1, color: Colors.black.withOpacity(0.1))),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                'or continue with',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  color: const Color(0xFF6C6B75),
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Container(height: 1, color: Colors.black.withOpacity(0.1))),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        // Social Logins
+                        Row(
+                          children: [
+                            const Expanded(child: _SocialButton(initial: 'G', label: 'Google')),
+                            const SizedBox(width: 12),
+                            const Expanded(child: _SocialButton(initial: 'C', label: 'Campus SSO')),
+                          ],
+                        ),
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 32),
-                ],
-              ),
+                ),
+                // Bottom Card pinned at the bottom
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFC5B8D8).withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'New here?',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                color: const Color(0xFF6C6B75),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Create an account',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w500,
+                                color: const Color(0xFF111113),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF111113),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
+        ],
+      ),
+      ),
+    );
+  }
+}
+
+class _Blob extends StatelessWidget {
+  final Color color;
+  final double size;
+  const _Blob({required this.color, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.5),
+            blurRadius: 100,
+            spreadRadius: 20,
           ),
         ],
       ),
@@ -339,66 +311,118 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
-class _GlassButton extends StatelessWidget {
-  final Widget child;
-  const _GlassButton({required this.child});
+class _InputField extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isPassword;
+  final Widget trailing;
+
+  const _InputField({
+    required this.label,
+    required this.value,
+    this.isPassword = false,
+    required this.trailing,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.55),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(26),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.72),
+            borderRadius: BorderRadius.circular(26),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF6C6B75),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isPassword ? '•••••••••••••••' : value,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: isPassword ? 2 : 0,
+                        color: const Color(0xFF111113),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              trailing,
+            ],
+          ),
+        ),
       ),
-      child: Center(child: child),
     );
   }
 }
 
 class _SocialButton extends StatelessWidget {
+  final String initial;
   final String label;
-  const _SocialButton({required this.label});
+
+  const _SocialButton({required this.initial, required this.label});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 54,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.55),
-        borderRadius: BorderRadius.circular(27),
-        border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 26,
-            height: 26,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(13),
-              border: Border.all(
-                  color: const Color(0xFFD9D7D3).withOpacity(0.9), width: 1),
-            ),
-            child: Center(
-              child: Text(
-                label[0],
-                style: GoogleFonts.urbanist(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF141414)),
-              ),
-            ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(27),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          height: 54,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.65),
+            borderRadius: BorderRadius.circular(27),
           ),
-          const SizedBox(width: 8),
-          Text(label,
-              style: GoogleFonts.urbanist(
-                  fontSize: 15,
-                  color: const Color(0xFF141414))),
-        ],
+          child: Row(
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    initial,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF111113),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF111113),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
