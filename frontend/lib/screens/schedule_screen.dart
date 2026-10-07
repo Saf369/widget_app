@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/schedule.dart';
 
 const List<String> _months = [
   '', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'
@@ -21,8 +22,8 @@ class ScheduleScreen extends StatefulWidget {
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
-  DateTime _currentMonth = DateTime(2026, 6);
-  DateTime _selectedDate = DateTime(2026, 6, 14);
+  DateTime _currentMonth = DateTime.now();
+  DateTime _selectedDate = DateTime.now();
 
   void _changeMonth(int offset) {
     setState(() {
@@ -48,8 +49,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     });
   }
 
+  String _getShortDayName(int weekday) {
+    // 1 = Monday, 7 = Sunday
+    switch (weekday) {
+      case 1: return 'MON';
+      case 2: return 'TUE';
+      case 3: return 'WED';
+      case 4: return 'THUR';
+      case 5: return 'FRI';
+      case 6: return 'SAT';
+      case 7: return 'SUN';
+      default: return 'MON';
+    }
+  }
+
+  List<TimetableEntry> _getEntriesForDate(DateTime date) {
+    String shortName = _getShortDayName(date.weekday);
+    return globalTimetable.where((e) => e.day.toUpperCase() == shortName).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final todaysEntries = _getEntriesForDate(_selectedDate);
+
     return Container(
       decoration: const BoxDecoration(
         color: Color(0xFFF7F6F2),
@@ -68,64 +90,131 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 120),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // 10 AM - Theory Test
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _TimeLabel(label: '10', suffix: 'AM'),
-                    const SizedBox(width: 16),
-                    Expanded(child: _TheoryTestCard()),
-                  ],
+            sliver: todaysEntries.isEmpty 
+              ? SliverToBoxAdapter(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(40.0),
+                      child: Text(
+                        "No classes today",
+                        style: GoogleFonts.urbanist(
+                          color: Colors.grey,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final entry = todaysEntries[index];
+                      // split "10:30" into "10:30" and "" or just use the start time directly
+                      String timeLabel = entry.startTime.replaceAll(RegExp(r'[a-zA-Z\s]'), '');
+                      String suffix = entry.startTime.toUpperCase().contains('PM') ? 'PM' : 'AM';
+                      
+                      // If no AM/PM, try to guess
+                      if (!entry.startTime.toUpperCase().contains('AM') && !entry.startTime.toUpperCase().contains('PM')) {
+                         int hour = int.tryParse(timeLabel.split(':').first) ?? 0;
+                         if (hour >= 1 && hour <= 6) suffix = 'PM'; // roughly afternoon
+                         else suffix = 'AM';
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 24.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _TimeLabel(label: timeLabel, suffix: suffix),
+                            const SizedBox(width: 16),
+                            Expanded(child: _DynamicClassCard(entry: entry)),
+                          ],
+                        ),
+                      );
+                    },
+                    childCount: todaysEntries.length,
+                  ),
                 ),
-                const SizedBox(height: 24),
-                
-                // 11 AM - Free Time
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _TimeLabel(label: '11', suffix: 'AM'),
-                    const SizedBox(width: 16),
-                    Expanded(child: _FreeTimeCard()),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                // 1 PM - Design Test
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _TimeLabel(label: '1', suffix: 'PM'),
-                    const SizedBox(width: 16),
-                    Expanded(child: _DesignTestCard()),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                // 3 PM - Studio Crit
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _TimeLabel(label: '3', suffix: 'PM'),
-                    const SizedBox(width: 16),
-                    Expanded(child: _StudioCritCard()),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                
-                // 4 PM - Lab Session
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const _TimeLabel(label: '4', suffix: 'PM'),
-                    const SizedBox(width: 16),
-                    Expanded(child: _LabSessionCard()),
-                  ],
-                ),
-              ]),
-            ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DynamicClassCard extends StatelessWidget {
+  final TimetableEntry entry;
+  const _DynamicClassCard({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    // Generate a color based on subject name
+    final colors = [
+      const Color(0xFFE9CCAA), // Yellow
+      const Color(0xFFD7A1A7), // Pink
+      const Color(0xFFBDE4C9), // Green
+      const Color(0xFFC4B9DC), // Purple
+      const Color(0xFFB5E2FA), // Light Blue
+    ];
+    int colorIndex = entry.subject.length % colors.length;
+    Color bgColor = colors[colorIndex];
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                entry.subject,
+                style: GoogleFonts.urbanist(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.5,
+                  color: const Color(0xFF111315),
+                ),
+              ),
+              const Icon(Icons.more_horiz, color: Color(0xFF111315)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.access_time, size: 16, color: Color(0xFF111315)),
+              const SizedBox(width: 6),
+              Text(
+                '${entry.startTime} - ${entry.endTime}',
+                style: GoogleFonts.urbanist(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF111315).withOpacity(0.8),
+                ),
+              ),
+            ],
+          ),
+          if (entry.room.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF111315)),
+                const SizedBox(width: 6),
+                Text(
+                  entry.room,
+                  style: GoogleFonts.urbanist(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF111315).withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ]
         ],
       ),
     );

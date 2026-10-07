@@ -3,16 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/lecture_screen.dart';
 import 'screens/ai_chat_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/upload_timetable_screen.dart';
 import 'screens/loading_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -42,7 +50,7 @@ class CustomSyllabusApp extends StatelessWidget {
   }
 }
 
-enum AppState { login, loading, home }
+enum AppState { login, upload, loading, home }
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -93,7 +101,15 @@ class AppShellState extends State<AppShell> {
     if (_appState == AppState.login) {
       return LoginScreen(
         key: const ValueKey('app_login_screen'),
-        onLogin: () => setState(() => _appState = AppState.loading),
+        onLogin: () => setState(() => _appState = AppState.upload),
+      );
+    }
+
+    if (_appState == AppState.upload) {
+      return UploadTimetableScreen(
+        key: const ValueKey('app_upload_screen'),
+        onUpload: () => setState(() => _appState = AppState.loading),
+        onSkip: () => setState(() => _appState = AppState.loading),
       );
     }
 
