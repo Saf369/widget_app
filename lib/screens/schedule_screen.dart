@@ -1,8 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class ScheduleScreen extends StatelessWidget {
+const List<String> _months = [
+  '', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const List<String> _weekDaysFull = [
+  '', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+];
+
+const List<String> _weekDaysShort = [
+  '', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'
+];
+
+class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
+
+  @override
+  State<ScheduleScreen> createState() => _ScheduleScreenState();
+}
+
+class _ScheduleScreenState extends State<ScheduleScreen> {
+  DateTime _currentMonth = DateTime(2026, 6);
+  DateTime _selectedDate = DateTime(2026, 6, 14);
+
+  void _changeMonth(int offset) {
+    setState(() {
+      int newMonth = _currentMonth.month + offset;
+      int newYear = _currentMonth.year;
+      if (newMonth > 12) {
+        newMonth -= 12;
+        newYear++;
+      } else if (newMonth < 1) {
+        newMonth += 12;
+        newYear--;
+      }
+      _currentMonth = DateTime(newYear, newMonth);
+    });
+  }
+
+  void _selectDate(DateTime date) {
+    setState(() {
+      _selectedDate = date;
+      if (date.month != _currentMonth.month || date.year != _currentMonth.year) {
+        _currentMonth = DateTime(date.year, date.month);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +59,12 @@ class ScheduleScreen extends StatelessWidget {
         slivers: [
           SliverPersistentHeader(
             pinned: true,
-            delegate: _ScheduleHeaderDelegate(),
+            delegate: _ScheduleHeaderDelegate(
+              currentMonth: _currentMonth,
+              selectedDate: _selectedDate,
+              onChangeMonth: _changeMonth,
+              onSelectDate: _selectDate,
+            ),
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 120),
@@ -84,14 +133,28 @@ class ScheduleScreen extends StatelessWidget {
 }
 
 class _ScheduleHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final DateTime currentMonth;
+  final DateTime selectedDate;
+  final void Function(int) onChangeMonth;
+  final void Function(DateTime) onSelectDate;
+
+  _ScheduleHeaderDelegate({
+    required this.currentMonth,
+    required this.selectedDate,
+    required this.onChangeMonth,
+    required this.onSelectDate,
+  });
+
   @override
-  double get maxExtent => 580.0;
+  double get maxExtent => 535.0;
 
   @override
   double get minExtent => 240.0;
 
   @override
-  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
+  bool shouldRebuild(covariant _ScheduleHeaderDelegate oldDelegate) {
+    return oldDelegate.currentMonth != currentMonth || oldDelegate.selectedDate != selectedDate;
+  }
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
@@ -148,7 +211,11 @@ class _ScheduleHeaderDelegate extends SliverPersistentHeaderDelegate {
                             child: OverflowBox(
                               alignment: Alignment.topCenter,
                               maxHeight: double.infinity,
-                              child: const _ExpandedMonthCalendar(),
+                              child: _ExpandedMonthCalendar(
+                                currentMonth: currentMonth,
+                                selectedDate: selectedDate,
+                                onSelectDate: onSelectDate,
+                              ),
                             ),
                           ),
                         ),
@@ -193,7 +260,7 @@ class _ScheduleHeaderDelegate extends SliverPersistentHeaderDelegate {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Friday, June 14, 2026',
+                        '${_weekDaysFull[selectedDate.weekday]}, ${_months[selectedDate.month]} ${selectedDate.day}, ${selectedDate.year}',
                         style: GoogleFonts.urbanist(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
@@ -225,8 +292,13 @@ class _ScheduleHeaderDelegate extends SliverPersistentHeaderDelegate {
       children: [
         Row(
           children: [
+            GestureDetector(
+              onTap: () => onChangeMonth(-1),
+              child: const Icon(Icons.chevron_left, color: Color(0xFF111315), size: 28),
+            ),
+            const SizedBox(width: 8),
             Text(
-              'June, 2026',
+              '${_months[currentMonth.month]}, ${currentMonth.year}',
               style: GoogleFonts.urbanist(
                 fontSize: 32,
                 fontWeight: FontWeight.w500,
@@ -234,46 +306,70 @@ class _ScheduleHeaderDelegate extends SliverPersistentHeaderDelegate {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.keyboard_arrow_down,
-                color: Color(0xFF111315), size: 28),
+            GestureDetector(
+              onTap: () => onChangeMonth(1),
+              child: const Icon(Icons.chevron_right, color: Color(0xFF111315), size: 28),
+            ),
           ],
         ),
         const Spacer(),
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: const Color(0xFFFAFAFA),
-            shape: BoxShape.circle,
-            border: Border.all(
-                color: const Color(0xFFECECED), width: 1.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+        GestureDetector(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => Padding(
+                padding: EdgeInsets.only(
+                  top: MediaQuery.of(context).padding.top + 40,
+                ),
+                child: const _NewScheduleSheet(),
               ),
-            ],
+            );
+          },
+          child: Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFAFAFA),
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: const Color(0xFFECECED), width: 1.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.add,
+                color: Color(0xFF111315), size: 24),
           ),
-          child: const Icon(Icons.add,
-              color: Color(0xFF111315), size: 24),
         ),
       ],
     );
   }
 
   Widget _buildWeekRow() {
+    int daysToSubtract = selectedDate.weekday - 1;
+    DateTime startOfWeek = selectedDate.subtract(Duration(days: daysToSubtract));
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: const [
-        _DayCell(day: 'Mon', date: '10', isActive: false),
-        _DayCell(day: 'Tue', date: '11', isActive: false),
-        _DayCell(day: 'Wed', date: '12', isActive: false),
-        _DayCell(day: 'Thu', date: '13', isActive: false),
-        _DayCell(day: 'Fri', date: '14', isActive: true),
-        _DayCell(day: 'Sat', date: '15', isActive: false),
-        _DayCell(day: 'Sun', date: '16', isActive: false),
-      ],
+      children: List.generate(7, (index) {
+        DateTime date = startOfWeek.add(Duration(days: index));
+        bool isActive = date.year == selectedDate.year && date.month == selectedDate.month && date.day == selectedDate.day;
+        
+        return GestureDetector(
+          onTap: () => onSelectDate(date),
+          child: _DayCell(
+            day: _weekDaysShort[date.weekday],
+            date: date.day.toString(),
+            isActive: isActive,
+          ),
+        );
+      }),
     );
   }
 }
@@ -811,18 +907,25 @@ class _MonthViewSheet extends StatelessWidget {
 }
 
 class _ExpandedMonthCalendar extends StatelessWidget {
-  const _ExpandedMonthCalendar();
+  final DateTime currentMonth;
+  final DateTime selectedDate;
+  final void Function(DateTime) onSelectDate;
+
+  const _ExpandedMonthCalendar({
+    required this.currentMonth,
+    required this.selectedDate,
+    required this.onSelectDate,
+  });
 
   @override
   Widget build(BuildContext context) {
     final daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     
-    // Generate dates (simplified for UI demonstration)
-    // June 2026 starts on Monday, 30 days. We'll show 5 weeks = 35 cells.
-    final dates = List.generate(35, (index) {
-      if (index < 30) return index + 1;
-      return (index - 30) + 1; // July dates
-    });
+    final firstDayOfMonth = DateTime(currentMonth.year, currentMonth.month, 1);
+    final daysToSubtract = firstDayOfMonth.weekday - 1; // Mon=1 -> 0
+    final startDate = firstDayOfMonth.subtract(Duration(days: daysToSubtract));
+    
+    final dates = List.generate(42, (index) => startDate.add(Duration(days: index)));
 
     return Column(
       children: [
@@ -853,67 +956,69 @@ class _ExpandedMonthCalendar extends StatelessWidget {
           padding: EdgeInsets.zero,
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 7,
-            mainAxisSpacing: 12,
+            mainAxisSpacing: 8,
             crossAxisSpacing: 8,
-            childAspectRatio: 0.8, // Slightly taller to fit event indicators
+            childAspectRatio: 1.1, // Even shorter to aggressively save vertical space
           ),
-          itemCount: 35,
+          itemCount: 42,
           itemBuilder: (context, index) {
             final date = dates[index];
-            final isNextMonth = index >= 30;
-            final isSelected = !isNextMonth && date == 14;
+            final isNextMonth = date.month != currentMonth.month;
+            final isSelected = date.year == selectedDate.year && date.month == selectedDate.month && date.day == selectedDate.day;
             
-            // Determine events
+            // Determine events randomly for visual
             List<Color> events = [];
             if (!isNextMonth) {
-              if (date == 3) events = [const Color(0xFFBDE4C9)]; // Green
-              if ([4, 7, 17, 25, 28].contains(date)) events = [const Color(0xFFD7A1A7)]; // Pink
-              if ([5, 12, 20, 26].contains(date)) events = [const Color(0xFFE9CCAA)]; // Yellow
-              if ([6, 13, 21, 28].contains(date)) events = [const Color(0xFFC4B9DC)]; // Purple
-              if (date == 14) events = [const Color(0xFFD7A1A7), const Color(0xFFC4B9DC)];
-              if (date == 25) events = [const Color(0xFFD7A1A7), const Color(0xFFC4B9DC)];
+              if (date.day % 7 == 3) events = [const Color(0xFFBDE4C9)]; // Green
+              if (date.day % 5 == 1) events = [const Color(0xFFD7A1A7)]; // Pink
+              if (date.day % 8 == 2) events = [const Color(0xFFE9CCAA)]; // Yellow
+              if (date.day % 4 == 0) events = [const Color(0xFFC4B9DC)]; // Purple
+              if (date.day == 14) events = [const Color(0xFFD7A1A7), const Color(0xFFC4B9DC)];
             }
 
-            return Container(
-              decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF111315) : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: isSelected ? [
-                  BoxShadow(
-                    color: const Color(0xFF111315).withOpacity(0.25),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  )
-                ] : null,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    date.toString(),
-                    style: GoogleFonts.urbanist(
-                      fontSize: 16,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                      color: isNextMonth 
-                          ? const Color(0xFFCBD5E1) 
-                          : isSelected ? Colors.white : const Color(0xFF111315),
+            return GestureDetector(
+              onTap: () => onSelectDate(date),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected ? const Color(0xFF111315) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: isSelected ? [
+                    BoxShadow(
+                      color: const Color(0xFF111315).withOpacity(0.25),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    )
+                  ] : null,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      date.day.toString(),
+                      style: GoogleFonts.urbanist(
+                        fontSize: 16,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        color: isNextMonth 
+                            ? const Color(0xFFCBD5E1) 
+                            : isSelected ? Colors.white : const Color(0xFF111315),
+                      ),
                     ),
-                  ),
-                  if (events.isNotEmpty) const SizedBox(height: 6),
-                  if (events.isNotEmpty)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: events.map((color) => Container(
-                        width: 14,
-                        height: 4,
-                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                        decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      )).toList(),
-                    ),
-                ],
+                    if (events.isNotEmpty) const SizedBox(height: 6),
+                    if (events.isNotEmpty)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: events.map((color) => Container(
+                          width: 14,
+                          height: 4,
+                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                          decoration: BoxDecoration(
+                            color: color,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        )).toList(),
+                      ),
+                  ],
+                ),
               ),
             );
           },
@@ -966,6 +1071,354 @@ class _LegendItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _NewScheduleSheet extends StatefulWidget {
+  const _NewScheduleSheet();
+
+  @override
+  State<_NewScheduleSheet> createState() => _NewScheduleSheetState();
+}
+
+class _NewScheduleSheetState extends State<_NewScheduleSheet> {
+  int _selectedColorIndex = 0;
+  final TextEditingController _dateController = TextEditingController();
+  final TextEditingController _timeController = TextEditingController();
+  
+  final _colors = [
+    {'name': 'Theory', 'color': const Color(0xFFD7A1A7)},
+    {'name': 'Design', 'color': const Color(0xFFC4B9DC)},
+    {'name': 'Studio', 'color': const Color(0xFFBDE4C9)},
+    {'name': 'Lab', 'color': const Color(0xFFE9CCAA)},
+  ];
+
+  @override
+  void dispose() {
+    _dateController.dispose();
+    _timeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF111315),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      final monthStr = _months[picked.month].substring(0, 3);
+      final dayStr = _weekDaysShort[picked.weekday];
+      setState(() {
+        _dateController.text = "$dayStr, ${picked.day} $monthStr ${picked.year}";
+      });
+    }
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final min = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return "$hour:$min $period";
+  }
+
+  Future<void> _selectTime() async {
+    final TimeOfDay? start = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+      builder: (context, child) {
+        return Theme(
+          data: ThemeData.light().copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF111315),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (start != null) {
+      if (!mounted) return;
+      final TimeOfDay? end = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay(hour: (start.hour + 1) % 24, minute: start.minute),
+        helpText: 'SELECT END TIME',
+        builder: (context, child) {
+          return Theme(
+            data: ThemeData.light().copyWith(
+              colorScheme: const ColorScheme.light(
+                primary: Color(0xFF111315),
+              ),
+            ),
+            child: child!,
+          );
+        },
+      );
+      setState(() {
+        if (end != null) {
+          _timeController.text = "${_formatTime(start)} – ${_formatTime(end)}";
+        } else {
+          _timeController.text = _formatTime(start);
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFF7F6F2),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(32),
+                topRight: Radius.circular(32),
+                bottomLeft: Radius.circular(32),
+                bottomRight: Radius.circular(32),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                )
+              ]
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('New Schedule', style: GoogleFonts.urbanist(fontSize: 28, fontWeight: FontWeight.w500, color: const Color(0xFF111315))),
+                    const SizedBox(height: 4),
+                    Text('Add a class, test or session', style: GoogleFonts.urbanist(fontSize: 14, color: const Color(0xFF94A3B8))),
+                  ],
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: const Icon(Icons.close, color: Color(0xFF111315)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildLabel('TITLE'),
+                  _buildTextField(hint: 'Theory Test'),
+                  const SizedBox(height: 20),
+                  
+                  _buildLabel('DESCRIPTION'),
+                  _buildTextField(hint: 'Covers main ideas and principles from the Design Theory topic.', maxLines: 3),
+                  const SizedBox(height: 20),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('DATE'),
+                            _buildTextField(
+                              hint: 'Fri, 14 Jun 2026',
+                              controller: _dateController,
+                              readOnly: true,
+                              onTap: _selectDate,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('TIME'),
+                            _buildTextField(
+                              hint: '10:00 – 11:00 AM',
+                              controller: _timeController,
+                              readOnly: true,
+                              onTap: _selectTime,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('ROOM'),
+                            _buildTextField(hint: '244'),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('POINTS'),
+                            _buildTextField(hint: '40'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  _buildLabel('COLOR'),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: List.generate(_colors.length, (index) {
+                      final isSelected = _selectedColorIndex == index;
+                      final item = _colors[index];
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedColorIndex = index),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: item['color'] as Color,
+                                shape: BoxShape.circle,
+                                border: isSelected 
+                                    ? Border.all(color: const Color(0xFF111315), width: 2) 
+                                    : Border.all(color: Colors.white, width: 2),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              item['name'] as String,
+                              style: GoogleFonts.urbanist(
+                                fontSize: 13,
+                                color: const Color(0xFF5A5A60),
+                              ),
+                            )
+                          ],
+                        ),
+                      );
+                    }),
+                  ),
+                  
+                  const SizedBox(height: 48),
+                  
+                  // Save Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF111315),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+                        elevation: 0,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        'Save Schedule',
+                        style: GoogleFonts.urbanist(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(
+        text,
+        style: GoogleFonts.urbanist(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.0,
+          color: const Color(0xFF94A3B8),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField({
+    required String hint, 
+    int maxLines = 1,
+    bool readOnly = false,
+    VoidCallback? onTap,
+    TextEditingController? controller,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        readOnly: readOnly,
+        onTap: onTap,
+        style: GoogleFonts.urbanist(fontSize: 15, color: const Color(0xFF111315)),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.urbanist(fontSize: 15, color: const Color(0xFF94A3B8)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          border: InputBorder.none,
+        ),
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -103,26 +104,51 @@ class SettingsScreen extends StatelessWidget {
                   // Preferences group
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: _SettingsGroup(items: const [
-                      _SettingsItem(
+                    child: _SettingsGroup(items: [
+                      const _SettingsItem(
                         iconBg: Color(0xFFE8CACF),
                         icon: Icons.notifications_outlined,
                         label: 'Notifications',
                         trailing: _ToggleOn(),
                       ),
-                      _SettingsItem(
+                      const _SettingsItem(
                         iconBg: Color(0xFFCDE6E2),
                         icon: Icons.alarm_rounded,
                         label: 'Study reminders',
                         trailing: _ToggleOn(),
                       ),
-                      _SettingsItem(
-                        iconBg: Color(0xFFD6CBE6),
-                        icon: Icons.smart_toy_outlined,
-                        label: 'AI Tutor',
-                        trailing: _ToggleOn(),
+                      Opacity(
+                        opacity: 0.6,
+                        child: _SettingsItem(
+                          iconBg: Color(0xFFD6CBE6),
+                          icon: Icons.smart_toy_outlined,
+                          label: 'AI Tutor',
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF111315).withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'COMING SOON',
+                                  style: GoogleFonts.urbanist(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.5,
+                                    color: const Color(0xFF5A5A60),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const _ToggleOff(),
+                            ],
+                          ),
+                        ),
                       ),
-                      _SettingsItem(
+                      const _SettingsItem(
                         iconBg: Color(0xFFD7DCE8),
                         icon: Icons.dark_mode_outlined,
                         label: 'Dark mode',
@@ -144,26 +170,33 @@ class SettingsScreen extends StatelessWidget {
                   // More group
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: _SettingsGroup(items: const [
+                    child: _SettingsGroup(items: [
                       _SettingsItem(
-                        iconBg: Color(0xFFF0DCC8),
+                        iconBg: const Color(0xFFF0DCC8),
                         icon: Icons.language_rounded,
                         label: 'Language',
-                        trailing: _ChevronTrailing(subtitle: 'English'),
+                        trailing: Text('English',
+                            style: GoogleFonts.urbanist(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF7A748C))),
                       ),
-                      _SettingsItem(
+                      const _SettingsItem(
                         iconBg: Color(0xFFCFE0EE),
                         icon: Icons.lock_outline_rounded,
                         label: 'Privacy & security',
                         trailing: _ChevronTrailing(),
                       ),
                       _SettingsItem(
-                        iconBg: Color(0xFFE3E0EA),
+                        iconBg: const Color(0xFFE3E0EA),
                         icon: Icons.help_outline_rounded,
                         label: 'Help center',
-                        trailing: _ChevronTrailing(),
+                        trailing: const _ChevronTrailing(),
+                        onTap: () {
+                          launchUrl(Uri.parse('mailto:safmu2090@gmail.com'));
+                        },
                       ),
-                      _SettingsItem(
+                      const _SettingsItem(
                         iconBg: Color(0xFFF0CFCF),
                         icon: Icons.logout_rounded,
                         label: 'Log out',
@@ -330,7 +363,7 @@ class _ProfileCard extends StatelessWidget {
 }
 
 class _SettingsGroup extends StatelessWidget {
-  final List<_SettingsItem> items;
+  final List<Widget> items;
   const _SettingsGroup({required this.items});
 
   @override
@@ -360,6 +393,7 @@ class _SettingsItem extends StatelessWidget {
   final Widget trailing;
   final bool isLast;
   final bool isDestructive;
+  final VoidCallback? onTap;
   const _SettingsItem({
     required this.iconBg,
     required this.icon,
@@ -367,6 +401,7 @@ class _SettingsItem extends StatelessWidget {
     required this.trailing,
     this.isLast = false,
     this.isDestructive = false,
+    this.onTap,
   });
 
   @override
@@ -375,9 +410,14 @@ class _SettingsItem extends StatelessWidget {
       children: [
         SizedBox(
           height: 56,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
               children: [
                 Container(
                   width: 38,
@@ -408,6 +448,8 @@ class _SettingsItem extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    ),
         if (!isLast)
           Padding(
             padding: const EdgeInsets.only(left: 64),
