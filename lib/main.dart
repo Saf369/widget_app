@@ -169,22 +169,30 @@ class _BottomNavBar extends StatelessWidget {
 
     return Container(
       height: 64,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(32),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+          filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.transparent, // Completely transparent fill
+              color: Colors.white.withOpacity(0.45), // Reduced opacity for more transparency
               borderRadius: BorderRadius.circular(32),
               border: Border.all(
-                color: Colors.white.withOpacity(0.05), // Ultra faint outer border
-                width: 1,
+                color: Colors.white.withOpacity(0.6),
+                width: 1.0,
               ),
             ),
             child: Row(
@@ -197,16 +205,16 @@ class _BottomNavBar extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeOutCubic,
-                    width: isActive ? 84 : 46,
-                    height: isActive ? 50 : 46,
+                    width: isActive ? 64 : 44,
+                    height: isActive ? 44 : 44,
                     decoration: BoxDecoration(
-                      color: isActive ? const Color(0xFF0B0B0D) : Colors.transparent,
+                      color: isActive ? const Color(0xFF0B0B0D) : Colors.white.withOpacity(0.25), // Distinct transparency for the icon circle
                       borderRadius: BorderRadius.circular(25),
                       border: isActive
                           ? null
                           : Border.all(
-                              color: Colors.white.withOpacity(0.60), // Whiter inactive circles
-                              width: 1,
+                              color: Colors.white, // Crisp white outline
+                              width: 1.0,
                             ),
                     ),
                     child: Center(
