@@ -129,11 +129,15 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          child: CustomScrollView(
+            slivers: [
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                 // Top Navigation Bar
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -173,7 +177,7 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
                   ],
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
                 
                 // Headers
                 Text(
@@ -191,7 +195,7 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
                   style: GoogleFonts.urbanist(fontSize: 15, fontWeight: FontWeight.w400, color: const Color(0xFF6E5A62), height: 1.4),
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
                 
                 // Dashed Upload Area
                 GestureDetector(
@@ -365,8 +369,11 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
             ),
           ),
         ),
-      ),
-    );
+      ],
+    ),
+  ),
+),
+);
   }
 }
 

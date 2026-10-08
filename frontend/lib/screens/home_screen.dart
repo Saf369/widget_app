@@ -455,8 +455,8 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   
   _HomeHeaderDelegate({required this.selectedDate, required this.onDateSelected});
 
-  final double expandedHeight = 310;
-  final double collapsedHeight = 178;
+  final double expandedHeight = 340;
+  final double collapsedHeight = 192;
 
   @override
   double get minExtent => collapsedHeight;
@@ -526,13 +526,15 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                     opacity: 1 - progress,
                     child: OverflowBox(
                       maxHeight: double.infinity,
-                      alignment: Alignment.topCenter,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      alignment: Alignment.topLeft,
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const SizedBox(height: 30),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 36),
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: Text(
                               'Hello, Anna',
                               style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w400, color: const Color(0xFF5B5B60)),
@@ -540,7 +542,7 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                           ),
                           const SizedBox(height: 4),
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 36),
+                            padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: Text(
                               _formatDate(DateTime.now()),
                               style: GoogleFonts.urbanist(fontSize: 44, fontWeight: FontWeight.w400, height: 1.1, letterSpacing: -0.96, color: const Color(0xFF141414)),
@@ -551,6 +553,7 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                     ),
                   ),
                 ),
+              ),
               if (progress == 1.0) const Spacer(),
               // Week Strip
               Padding(

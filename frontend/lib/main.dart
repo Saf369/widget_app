@@ -13,13 +13,44 @@ import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/upload_timetable_screen.dart';
 import 'screens/loading_screen.dart';
+import 'package:home_widget/home_widget.dart';
+import 'widgets/home_widget_ui.dart';
+
+@pragma("vm:entry-point")
+Future<void> backgroundCallback(Uri? uri) async {
+  if (uri?.host == 'tabclicked') {
+    final tabName = uri?.queryParameters['tab'];
+    TimetableWidgetTab selectedTab = TimetableWidgetTab.hour;
+    if (tabName == 'day') selectedTab = TimetableWidgetTab.day;
+    if (tabName == 'week') selectedTab = TimetableWidgetTab.week;
+    if (tabName == 'month') selectedTab = TimetableWidgetTab.month;
+    
+    await HomeWidget.renderFlutterWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Material(
+          color: Colors.transparent,
+          child: TimetableHomeWidgetUI(activeTab: selectedTab),
+        ),
+      ),
+      logicalSize: const Size(360, 360),
+      key: 'timetable_widget_image',
+    );
+    await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  HomeWidget.registerInteractivityCallback(backgroundCallback);
   
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase initialization failed (probably not configured for this platform yet): \$e');
+  }
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
@@ -65,10 +96,40 @@ class AppShell extends StatefulWidget {
 
 class AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
+  int _previousIndex = 0;
   AppState _appState = AppState.login;
 
+  @override
+  void initState() {
+    super.initState();
+    _updateNativeWidget();
+  }
+
+  Future<void> _updateNativeWidget() async {
+    try {
+      await HomeWidget.renderFlutterWidget(
+        const Directionality(
+          textDirection: TextDirection.ltr,
+          child: Material(
+            color: Colors.transparent,
+            child: TimetableHomeWidgetUI(activeTab: TimetableWidgetTab.hour),
+          ),
+        ),
+        logicalSize: const Size(360, 360),
+        key: 'timetable_widget_image',
+      );
+      await HomeWidget.updateWidget(
+        name: 'TimetableWidgetProvider',
+      );
+    } catch (e) {
+      debugPrint('Error updating widget: $e');
+    }
+  }
+
   void goToTab(int index) {
+    if (_selectedIndex == index) return;
     setState(() {
+      _previousIndex = _selectedIndex;
       _selectedIndex = index;
     });
   }
@@ -122,32 +183,40 @@ class AppShellState extends State<AppShell> {
 
     return Scaffold(
       key: const ValueKey('app_home_scaffold'),
-      backgroundColor: Colors.transparent,
-      extendBody: true, // Keeping this just in case they have SafeArea elsewhere
+      backgroundColor: const Color(0xFFF3F0EE),
+      extendBody: true,
       body: Stack(
         children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 500),
-            switchInCurve: Curves.easeOutQuint,
-            switchOutCurve: Curves.easeInQuint,
-            transitionBuilder: (child, animation) {
-              return FadeTransition(
-                opacity: animation,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.04), // Gentle slide up
-                    end: Offset.zero,
-                  ).animate(animation),
-                  child: child,
+          Stack(
+            children: List.generate(_screens.length, (index) {
+              final isActive = index == _selectedIndex;
+              
+              Offset targetOffset;
+              if (isActive) {
+                targetOffset = Offset.zero;
+              } else {
+                targetOffset = const Offset(0.0, 0.08);
+              }
+
+              return IgnorePointer(
+                ignoring: !isActive,
+                child: AnimatedSlide(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.fastOutSlowIn,
+                  offset: targetOffset,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeIn,
+                    opacity: isActive ? 1.0 : 0.0,
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: double.infinity,
+                      child: _screens[index],
+                    ),
+                  ),
                 ),
               );
-            },
-            child: SizedBox(
-              key: ValueKey<int>(_selectedIndex),
-              width: double.infinity,
-              height: double.infinity,
-              child: _screens[_selectedIndex],
-            ),
+            }),
           ),
           Align(
             alignment: Alignment.bottomCenter,
@@ -156,7 +225,7 @@ class AppShellState extends State<AppShell> {
                 padding: const EdgeInsets.only(bottom: 20),
                 child: _BottomNavBar(
                   selectedIndex: _selectedIndex,
-                  onTap: (i) => setState(() => _selectedIndex = i),
+                  onTap: (i) => goToTab(i),
                 ),
               ),
             ),
@@ -211,42 +280,73 @@ class _BottomNavBar extends StatelessWidget {
                 width: 1.0,
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: List.generate(items.length, (i) {
-                final isActive = selectedIndex == i;
-                return GestureDetector(
-                  onTap: () => onTap(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    curve: Curves.easeOutCubic,
-                    width: isActive ? 64 : 44,
-                    height: isActive ? 44 : 44,
-                    decoration: BoxDecoration(
-                      color: isActive ? const Color(0xFF0B0B0D) : Colors.white.withOpacity(0.25), // Distinct transparency for the icon circle
-                      borderRadius: BorderRadius.circular(25),
-                      border: isActive
-                          ? null
-                          : Border.all(
-                              color: Colors.white, // Crisp white outline
-                              width: 1.0,
-                            ),
-                    ),
-                    child: Center(
-                      child: AnimatedTheme(
-                        data: Theme.of(context).copyWith(
-                          iconTheme: IconThemeData(
-                            color: isActive ? Colors.white : const Color(0xFF1A1A1F),
-                            size: 20,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final itemWidth = constraints.maxWidth / items.length;
+                return Stack(
+                  children: [
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOutCubic,
+                      left: selectedIndex * itemWidth,
+                      top: 0,
+                      bottom: 0,
+                      width: itemWidth,
+                      child: Center(
+                        child: Container(
+                          width: 64,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0B0B0D),
+                            borderRadius: BorderRadius.circular(25),
                           ),
                         ),
-                        child: Icon(items[i]),
                       ),
                     ),
-                  ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: List.generate(items.length, (i) {
+                        final isActive = selectedIndex == i;
+                        return GestureDetector(
+                          onTap: () => onTap(i),
+                          behavior: HitTestBehavior.opaque,
+                          child: SizedBox(
+                            width: itemWidth,
+                            height: 44,
+                            child: Center(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 350),
+                                curve: Curves.easeOutCubic,
+                                width: isActive ? 64 : 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: isActive ? Colors.transparent : Colors.white.withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(25),
+                                  border: isActive
+                                      ? Border.all(color: Colors.transparent, width: 1.0)
+                                      : Border.all(color: Colors.white, width: 1.0),
+                                ),
+                                child: Center(
+                                  child: TweenAnimationBuilder<Color?>(
+                                    tween: ColorTween(
+                                      begin: const Color(0xFF1A1A1F),
+                                      end: isActive ? Colors.white : const Color(0xFF1A1A1F),
+                                    ),
+                                    duration: const Duration(milliseconds: 350),
+                                    builder: (context, color, _) {
+                                      return Icon(items[i], color: color, size: 20);
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
                 );
-              }),
+              },
             ),
           ),
         ),
