@@ -18,26 +18,8 @@ import 'widgets/home_widget_ui.dart';
 
 @pragma("vm:entry-point")
 Future<void> backgroundCallback(Uri? uri) async {
-  if (uri?.host == 'tabclicked') {
-    final tabName = uri?.queryParameters['tab'];
-    TimetableWidgetTab selectedTab = TimetableWidgetTab.hour;
-    if (tabName == 'day') selectedTab = TimetableWidgetTab.day;
-    if (tabName == 'week') selectedTab = TimetableWidgetTab.week;
-    if (tabName == 'month') selectedTab = TimetableWidgetTab.month;
-    
-    await HomeWidget.renderFlutterWidget(
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: Material(
-          color: Colors.transparent,
-          child: TimetableHomeWidgetUI(activeTab: selectedTab),
-        ),
-      ),
-      logicalSize: const Size(360, 360),
-      key: 'timetable_widget_image',
-    );
-    await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
-  }
+  // If we ever need to fetch data in the background, we can do it here.
+  // For tab clicks, we now handle them 100% natively for instant speed!
 }
 
 void main() async {
@@ -107,20 +89,10 @@ class AppShellState extends State<AppShell> {
 
   Future<void> _updateNativeWidget() async {
     try {
-      await HomeWidget.renderFlutterWidget(
-        const Directionality(
-          textDirection: TextDirection.ltr,
-          child: Material(
-            color: Colors.transparent,
-            child: TimetableHomeWidgetUI(activeTab: TimetableWidgetTab.hour),
-          ),
-        ),
-        logicalSize: const Size(360, 360),
-        key: 'timetable_widget_image',
-      );
-      await HomeWidget.updateWidget(
-        name: 'TimetableWidgetProvider',
-      );
+      // We no longer render Flutter to an image.
+      // We just tell the native widget to refresh itself!
+      await HomeWidget.saveWidgetData<String>('active_tab', 'hour');
+      await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
     } catch (e) {
       debugPrint('Error updating widget: $e');
     }
