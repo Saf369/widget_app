@@ -89,10 +89,12 @@ class AppShellState extends State<AppShell> {
 
   Future<void> _updateNativeWidget() async {
     try {
-      // We no longer render Flutter to an image.
-      // We just tell the native widget to refresh itself!
-      await HomeWidget.saveWidgetData<String>('active_tab', 'hour');
+      final currentTab = await HomeWidget.getWidgetData<String>('active_tab');
+      if (currentTab == null) {
+        await HomeWidget.saveWidgetData<String>('active_tab', 'day');
+      }
       await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
+      await HomeWidget.updateWidget(name: 'TimetableGlanceWidgetReceiver');
     } catch (e) {
       debugPrint('Error updating widget: $e');
     }
