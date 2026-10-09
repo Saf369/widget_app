@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'upload_timetable_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -154,6 +155,39 @@ class SettingsScreen extends StatelessWidget {
                         label: 'Dark mode',
                         trailing: _ToggleOff(),
                         isLast: true,
+                      ),
+                    ]),
+                  ),
+                  const SizedBox(height: 20),
+                  // Timetable Section
+                  Padding(
+                    padding: const EdgeInsets.only(left: 36, bottom: 8),
+                    child: Text('Timetable & Syllabus',
+                        style: GoogleFonts.urbanist(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFF7A748C))),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 22),
+                    child: _SettingsGroup(items: [
+                      _SettingsItem(
+                        iconBg: const Color(0xFFDBD3EE),
+                        icon: Icons.upload_file_rounded,
+                        label: 'Upload new timetable (PDF / Image)',
+                        trailing: const _ChevronTrailing(),
+                        isLast: true,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UploadTimetableScreen(
+                                onUpload: () => Navigator.pop(context),
+                                onSkip: () => Navigator.pop(context),
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ]),
                   ),

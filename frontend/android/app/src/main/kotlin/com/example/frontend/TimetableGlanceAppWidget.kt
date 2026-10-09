@@ -41,6 +41,10 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import es.antonborri.home_widget.HomeWidgetGlanceState
 import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
+import org.json.JSONArray
 
 val TabActionKey = ActionParameters.Key<String>("selected_tab")
 val DeltaActionKey = ActionParameters.Key<Int>("hour_delta")
@@ -52,6 +56,122 @@ private fun launchAppIntent(context: Context) = actionStartActivity(
         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
 )
+
+data class GlanceTimetableEntry(
+    val id: String,
+    val day: String,
+    val startTime: String,
+    val endTime: String,
+    val subject: String,
+    val room: String,
+    val instructor: String,
+    val colorCode: String
+)
+
+private fun parseGlanceEntries(jsonStr: String?): List<GlanceTimetableEntry> {
+    if (jsonStr.isNullOrBlank()) return emptyList()
+    return try {
+        val array = JSONArray(jsonStr)
+        val list = mutableListOf<GlanceTimetableEntry>()
+        for (i in 0 until array.length()) {
+            val obj = array.getJSONObject(i)
+            val rawDay = obj.optString("day", obj.optString("day_of_week", ""))
+            val normDay = when {
+                rawDay.startsWith("MON", ignoreCase = true) -> "MON"
+                rawDay.startsWith("TUE", ignoreCase = true) -> "TUE"
+                rawDay.startsWith("WED", ignoreCase = true) -> "WED"
+                rawDay.startsWith("THU", ignoreCase = true) -> "THUR"
+                rawDay.startsWith("FRI", ignoreCase = true) -> "FRI"
+                rawDay.startsWith("SAT", ignoreCase = true) -> "SAT"
+                rawDay.startsWith("SUN", ignoreCase = true) -> "SUN"
+                else -> rawDay.trim().uppercase()
+            }
+            val subjectVal = obj.optString("subject", obj.optString("course_name", obj.optString("title", "Class"))).trim()
+            list.add(
+                GlanceTimetableEntry(
+                    id = obj.optString("id", "$i"),
+                    day = normDay,
+                    startTime = obj.optString("start_time", obj.optString("startTime", "")).trim(),
+                    endTime = obj.optString("end_time", obj.optString("endTime", "")).trim(),
+                    subject = if (subjectVal.isNotEmpty()) subjectVal else "Class",
+                    room = obj.optString("room", obj.optString("location", "")).trim(),
+                    instructor = obj.optString("instructor", "").trim(),
+                    colorCode = obj.optString("color_code", obj.optString("color", "0xFFE8CACF"))
+                )
+            )
+        }
+        list
+    } catch (_: Exception) {
+        emptyList()
+    }
+}
+
+private fun parseTimeToMinutes(timeStr: String): Int {
+    if (timeStr.isBlank()) return -1
+    val clean = timeStr.trim().uppercase()
+    val isPm = clean.contains("PM")
+    val isAm = clean.contains("AM")
+    val digitsOnly = clean.replace(Regex("[^0-9:]"), "")
+    val parts = digitsOnly.split(":")
+    var hour = parts.getOrNull(0)?.toIntOrNull() ?: return -1
+    val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    if (isPm && hour < 12) hour += 12
+    if (isAm && hour == 12) hour = 0
+    if (!isPm && !isAm && hour in 1..6) hour += 12
+    return hour * 60 + minute
+}
+
+private fun parseHourAndAmPm(timeStr: String): Pair<String, String> {
+    val totalMin = parseTimeToMinutes(timeStr)
+    if (totalMin < 0) return Pair(timeStr, "")
+    val rawHour = totalMin / 60
+    val minute = totalMin % 60
+    val isPm = rawHour >= 12
+    val hour12 = if (rawHour % 12 == 0) 12 else rawHour % 12
+    val amPm = if (isPm) "PM" else "AM"
+    val hourText = if (minute == 0) "$hour12" else "$hour12:${if (minute < 10) "0$minute" else "$minute"}"
+    return Pair(hourText, amPm)
+}
+
+private fun formatTimeRange(startStr: String, endStr: String): String {
+    val startMin = parseTimeToMinutes(startStr)
+    val endMin = parseTimeToMinutes(endStr)
+    if (startMin < 0 || endMin < 0) return "$startStr – $endStr"
+
+    fun fmt(min: Int): String {
+        val h = min / 60
+        val m = min % 60
+        val isPm = h >= 12
+        val h12 = if (h % 12 == 0) 12 else h % 12
+        val amPm = if (isPm) "PM" else "AM"
+        val mStr = if (m == 0) "00" else if (m < 10) "0$m" else "$m"
+        return "$h12:$mStr $amPm"
+    }
+    val durMin = endMin - startMin
+    val durStr = if (durMin > 0) {
+        val hrs = durMin / 60
+        val mins = durMin % 60
+        when {
+            hrs > 0 && mins > 0 -> " · ${hrs}h ${mins}m"
+            hrs > 0 -> " · $hrs Hour${if (hrs > 1) "s" else ""}"
+            else -> " · $mins min"
+        }
+    } else ""
+    return "${fmt(startMin)} – ${fmt(endMin)}$durStr"
+}
+
+private fun getCardDrawable(colorCode: String, subject: String): Int {
+    val s = subject.uppercase()
+    val c = colorCode.uppercase()
+    return when {
+        s.contains("FREE") -> R.drawable.card_free_bg
+        c.contains("E8CACF") || c.contains("D7A1A7") || s.contains("THEORY") || s.contains("MATH") -> R.drawable.card_pink_bg
+        c.contains("DBD3EE") || s.contains("DESIGN") || s.contains("ENGLISH") || s.contains("MUSIC") -> R.drawable.card_purple_bg
+        c.contains("CDE6E2") || c.contains("BDE4C9") || s.contains("SCIENCE") || s.contains("PDHPE") -> R.drawable.card_mint_bg
+        c.contains("EFCCB8") || c.contains("E9CCAA") || s.contains("HISTORY") || s.contains("ART") -> R.drawable.card_peach_bg
+        else -> R.drawable.card_pink_bg
+    }
+}
 
 class TimetableGlanceAppWidget : GlanceAppWidget() {
 
@@ -68,6 +188,39 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
         val prefs = state.preferences
         val activeTab = prefs.getString("active_tab", "day") ?: "day"
         val hourOffset = prefs.getInt("hour_offset", 0)
+        val entriesJson = prefs.getString("timetable_entries", null)
+        val entries = parseGlanceEntries(entriesJson)
+
+        val calendar = Calendar.getInstance()
+        val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+        val todayKey = when (calendar.get(Calendar.DAY_OF_WEEK)) {
+            Calendar.MONDAY -> "MON"
+            Calendar.TUESDAY -> "TUE"
+            Calendar.WEDNESDAY -> "WED"
+            Calendar.THURSDAY -> "THUR"
+            Calendar.FRIDAY -> "FRI"
+            Calendar.SATURDAY -> "SAT"
+            Calendar.SUNDAY -> "SUN"
+            else -> "MON"
+        }
+
+        val locale = Locale.getDefault()
+        val todayDateFormatted = SimpleDateFormat("EEE, d MMM yyyy", locale).format(calendar.time)
+        val monthFormatted = SimpleDateFormat("MMMM yyyy", locale).format(calendar.time)
+
+        val weekCalStart = (calendar.clone() as Calendar).apply {
+            val dow = get(Calendar.DAY_OF_WEEK)
+            val diff = if (dow == Calendar.SUNDAY) -6 else Calendar.MONDAY - dow
+            add(Calendar.DAY_OF_MONTH, diff)
+        }
+        val weekCalEnd = (weekCalStart.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 6) }
+        val weekFormatted = "${SimpleDateFormat("d", locale).format(weekCalStart.time)} – ${SimpleDateFormat("d MMM yyyy", locale).format(weekCalEnd.time)}"
+
+        val dateText = when (activeTab) {
+            "week" -> weekFormatted
+            "month" -> monthFormatted
+            else -> todayDateFormatted
+        }
 
         Box(
             modifier = GlanceModifier
@@ -78,27 +231,19 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
             Column(
                 modifier = GlanceModifier.fillMaxSize()
             ) {
-                // Header (Timetable + Date + Tabs)
-                val dateText = when (activeTab) {
-                    "week" -> "10 – 16 June 2026"
-                    "month" -> "June 2026"
-                    else -> "Fri, 14 June 2026"
-                }
-
                 WidgetHeader(context = context, activeTab = activeTab, dateText = dateText)
 
                 Spacer(modifier = GlanceModifier.height(14.dp))
 
-                // Content View according to activeTab
                 Box(
                     modifier = GlanceModifier.fillMaxSize().defaultWeight()
                 ) {
                     when (activeTab) {
-                        "hour" -> HourView(context = context, hourOffset = hourOffset)
-                        "day" -> DayView(context = context)
-                        "week" -> WeekView(context = context)
-                        "month" -> MonthView(context = context)
-                        else -> DayView(context = context)
+                        "hour" -> HourView(context = context, hourOffset = hourOffset, entries = entries, currentMinutes = currentMinutes, todayKey = todayKey)
+                        "day" -> DayView(context = context, entries = entries, currentMinutes = currentMinutes, todayKey = todayKey)
+                        "week" -> WeekView(context = context, weekCalStart = weekCalStart, todayCal = calendar)
+                        "month" -> MonthView(context = context, entries = entries, todayKey = todayKey, todayCal = calendar)
+                        else -> DayView(context = context, entries = entries, currentMinutes = currentMinutes, todayKey = todayKey)
                     }
                 }
             }
@@ -183,10 +328,159 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 1. DAY VIEW (Image 1)
+    // 1. DAY VIEW (Dynamic with Live Status & Fallback)
     // ─────────────────────────────────────────────────────────────────────────
     @Composable
-    private fun DayView(context: Context) {
+    private fun DayView(
+        context: Context,
+        entries: List<GlanceTimetableEntry>,
+        currentMinutes: Int,
+        todayKey: String
+    ) {
+        val todayEntries = entries.filter { it.day == todayKey }
+        val displayEntries = if (todayEntries.isNotEmpty()) {
+            todayEntries
+        } else if (entries.isNotEmpty()) {
+            val firstDay = entries.first().day
+            entries.filter { it.day == firstDay }
+        } else {
+            emptyList()
+        }
+
+        if (displayEntries.isEmpty()) {
+            DefaultDayView(context)
+            return
+        }
+
+        val sorted = displayEntries.sortedBy { parseTimeToMinutes(it.startTime) }
+
+        val activeIndex = sorted.indexOfFirst {
+            val s = parseTimeToMinutes(it.startTime)
+            val e = parseTimeToMinutes(it.endTime)
+            currentMinutes in s until e
+        }
+        val nextIndex = if (activeIndex >= 0) activeIndex else sorted.indexOfFirst {
+            val s = parseTimeToMinutes(it.startTime)
+            currentMinutes < s
+        }
+
+        val startIndex = when {
+            activeIndex >= 0 -> activeIndex.coerceAtMost((sorted.size - 3).coerceAtLeast(0))
+            nextIndex >= 0 -> nextIndex.coerceAtMost((sorted.size - 3).coerceAtLeast(0))
+            else -> (sorted.size - 3).coerceAtLeast(0)
+        }
+
+        val visibleEntries = sorted.drop(startIndex).take(3)
+
+        Column(
+            modifier = GlanceModifier.fillMaxSize()
+        ) {
+            visibleEntries.forEachIndexed { index, entry ->
+                val (hourStr, amPmStr) = parseHourAndAmPm(entry.startTime)
+                val sMin = parseTimeToMinutes(entry.startTime)
+                val eMin = parseTimeToMinutes(entry.endTime)
+                val isNow = currentMinutes in sMin until eMin
+                val cardDrawable = getCardDrawable(entry.colorCode, entry.subject)
+                val timeRangeText = formatTimeRange(entry.startTime, entry.endTime)
+
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                    verticalAlignment = Alignment.Vertical.CenterVertically
+                ) {
+                    TimeLabel(hour = hourStr, amPm = amPmStr)
+                    Spacer(modifier = GlanceModifier.width(10.dp))
+
+                    Box(
+                        modifier = GlanceModifier
+                            .fillMaxWidth()
+                            .defaultWeight()
+                            .fillMaxHeight()
+                            .background(ImageProvider(cardDrawable))
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                            .clickable(launchAppIntent(context)),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        Row(
+                            modifier = GlanceModifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Vertical.CenterVertically
+                        ) {
+                            Column(
+                                modifier = GlanceModifier.defaultWeight()
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.Vertical.CenterVertically
+                                ) {
+                                    Text(
+                                        text = entry.subject,
+                                        style = TextStyle(
+                                            color = color(Color(0xFF181818)),
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                    if (isNow) {
+                                        Spacer(modifier = GlanceModifier.width(6.dp))
+                                        Box(
+                                            modifier = GlanceModifier
+                                                .background(ImageProvider(R.drawable.badge_now_bg))
+                                                .padding(horizontal = 7.dp, vertical = 2.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "NOW",
+                                                style = TextStyle(
+                                                    color = color(Color.White),
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(modifier = GlanceModifier.height(2.dp))
+                                Text(
+                                    text = if (entry.instructor.isNotEmpty()) "$timeRangeText · ${entry.instructor}" else timeRangeText,
+                                    style = TextStyle(
+                                        color = color(Color(0xFF42383D)),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Normal
+                                    )
+                                )
+                            }
+
+                            if (entry.room.isNotEmpty()) {
+                                Spacer(modifier = GlanceModifier.width(6.dp))
+                                Box(
+                                    modifier = GlanceModifier
+                                        .background(ImageProvider(if (isNow) R.drawable.badge_now_bg else R.drawable.badge_room_bg))
+                                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = entry.room,
+                                        style = TextStyle(
+                                            color = color(if (isNow) Color.White else Color(0xFF262322)),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (index < visibleEntries.size - 1) {
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+                    HorizontalLine()
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun DefaultDayView(context: Context) {
         Column(
             modifier = GlanceModifier.fillMaxSize()
         ) {
@@ -412,10 +706,292 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // 2. HOUR VIEW (Image 2)
+    // 2. HOUR VIEW (Dynamic with Live Progress & Fallback)
     // ─────────────────────────────────────────────────────────────────────────
     @Composable
-    private fun HourView(context: Context, hourOffset: Int) {
+    private fun HourView(
+        context: Context,
+        hourOffset: Int,
+        entries: List<GlanceTimetableEntry>,
+        currentMinutes: Int,
+        todayKey: String
+    ) {
+        val todayEntries = entries.filter { it.day == todayKey }
+        val displayEntries = if (todayEntries.isNotEmpty()) todayEntries else entries.filter { it.day == "MON" }.ifEmpty { entries }
+
+        if (displayEntries.isEmpty()) {
+            DefaultHourView(context, hourOffset)
+            return
+        }
+
+        val sorted = displayEntries.sortedBy { parseTimeToMinutes(it.startTime) }
+        val activeIndex = sorted.indexOfFirst {
+            val s = parseTimeToMinutes(it.startTime)
+            val e = parseTimeToMinutes(it.endTime)
+            currentMinutes in s until e
+        }
+        val baseIndex = if (activeIndex >= 0) activeIndex else sorted.indexOfFirst {
+            val s = parseTimeToMinutes(it.startTime)
+            currentMinutes < s
+        }.let { if (it >= 0) it else 0 }
+
+        val targetIndex = (baseIndex + hourOffset).coerceIn(0, sorted.size - 1)
+        val entry = sorted[targetIndex]
+
+        val sMin = parseTimeToMinutes(entry.startTime)
+        val eMin = parseTimeToMinutes(entry.endTime)
+        val isNow = currentMinutes in sMin until eMin
+        val isDone = currentMinutes >= eMin
+        val isUpcoming = currentMinutes < sMin
+
+        val statusText = when {
+            isNow -> "In progress · ${entry.subject}"
+            isDone -> "Completed · ${entry.subject}"
+            else -> "Upcoming · ${entry.subject}"
+        }
+
+        val durMin = (eMin - sMin).coerceAtLeast(1)
+        val elapsed = (currentMinutes - sMin).coerceIn(0, durMin)
+        val minLeft = (eMin - currentMinutes).coerceAtLeast(0)
+        val progressFrac = if (isDone) 1.0f else if (isUpcoming) 0.0f else (elapsed.toFloat() / durMin.toFloat()).coerceIn(0.05f, 1.0f)
+        val barWidthDp = (180 * progressFrac).toInt().coerceIn(10, 180)
+
+        val cardBg = getCardDrawable(entry.colorCode, entry.subject)
+
+        Column(
+            modifier = GlanceModifier.fillMaxSize()
+        ) {
+            // Navigation Bar (< Time Range / Status >)
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Vertical.CenterVertically
+            ) {
+                // Prev button
+                Box(
+                    modifier = GlanceModifier
+                        .background(ImageProvider(R.drawable.circle_button_bg))
+                        .padding(7.dp)
+                        .clickable(
+                            actionRunCallback<NavigateHourAction>(
+                                actionParametersOf(DeltaActionKey to -1)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_chevron_left),
+                        contentDescription = "Previous Hour",
+                        modifier = GlanceModifier.width(16.dp).height(16.dp)
+                    )
+                }
+
+                // Middle Text
+                Column(
+                    modifier = GlanceModifier.defaultWeight(),
+                    horizontalAlignment = Alignment.Horizontal.CenterHorizontally
+                ) {
+                    Text(
+                        text = "${entry.startTime} – ${entry.endTime}",
+                        style = TextStyle(
+                            color = color(Color(0xFF181818)),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                    Spacer(modifier = GlanceModifier.height(2.dp))
+                    Text(
+                        text = statusText,
+                        style = TextStyle(
+                            color = color(Color(0xFF6C6661)),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal
+                        )
+                    )
+                }
+
+                // Next button
+                Box(
+                    modifier = GlanceModifier
+                        .background(ImageProvider(R.drawable.circle_button_bg))
+                        .padding(7.dp)
+                        .clickable(
+                            actionRunCallback<NavigateHourAction>(
+                                actionParametersOf(DeltaActionKey to 1)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_chevron_right),
+                        contentDescription = "Next Hour",
+                        modifier = GlanceModifier.width(16.dp).height(16.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = GlanceModifier.height(14.dp))
+
+            // Main Content: Left timestamps + Right card filling vertical height
+            Row(
+                modifier = GlanceModifier.fillMaxWidth().defaultWeight()
+            ) {
+                // Left Timestamps Column
+                Column(
+                    modifier = GlanceModifier.width(42.dp).fillMaxHeight()
+                ) {
+                    Column(
+                        modifier = GlanceModifier.fillMaxWidth().defaultWeight()
+                    ) {
+                        Text(entry.startTime, style = TextStyle(color = color(Color(0xFF726E6A)), fontSize = 11.sp, fontWeight = FontWeight.Medium))
+                        Spacer(modifier = GlanceModifier.defaultWeight())
+                        Text(entry.endTime, style = TextStyle(color = color(Color(0xFF726E6A)), fontSize = 11.sp, fontWeight = FontWeight.Medium))
+                    }
+                }
+
+                Spacer(modifier = GlanceModifier.width(10.dp))
+
+                // Right Card Column
+                Box(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .defaultWeight()
+                        .fillMaxHeight()
+                        .background(ImageProvider(cardBg))
+                        .padding(16.dp)
+                        .clickable(launchAppIntent(context))
+                ) {
+                    Column(
+                        modifier = GlanceModifier.fillMaxSize()
+                    ) {
+                        // Card Header: Title + "Now" or Room badge
+                        Row(
+                            modifier = GlanceModifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Vertical.CenterVertically
+                        ) {
+                            Text(
+                                text = entry.subject,
+                                style = TextStyle(
+                                    color = color(Color(0xFF181818)),
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = GlanceModifier.defaultWeight()
+                            )
+
+                            if (isNow) {
+                                Box(
+                                    modifier = GlanceModifier
+                                        .background(ImageProvider(R.drawable.badge_now_bg))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Now",
+                                        style = TextStyle(
+                                            color = color(Color.White),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+                            } else if (entry.room.isNotEmpty()) {
+                                Box(
+                                    modifier = GlanceModifier
+                                        .background(ImageProvider(R.drawable.badge_room_bg))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = entry.room,
+                                        style = TextStyle(
+                                            color = color(Color(0xFF262322)),
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = GlanceModifier.height(2.dp))
+
+                        val detailLine = listOfNotNull(
+                            if (entry.instructor.isNotEmpty()) entry.instructor else null,
+                            if (entry.room.isNotEmpty()) entry.room else null
+                        ).joinToString(" · ")
+
+                        if (detailLine.isNotEmpty()) {
+                            Text(
+                                text = detailLine,
+                                style = TextStyle(
+                                    color = color(Color(0xFF45363D)),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Normal
+                                )
+                            )
+                        }
+
+                        Spacer(modifier = GlanceModifier.defaultWeight())
+
+                        // Progress Bar Track
+                        Row(
+                            modifier = GlanceModifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .background(ImageProvider(R.drawable.progress_bar_track))
+                        ) {
+                            Box(
+                                modifier = GlanceModifier
+                                    .width(barWidthDp.dp)
+                                    .fillMaxHeight()
+                                    .background(Color(0xFF181818))
+                            ) {}
+                        }
+
+                        Spacer(modifier = GlanceModifier.height(8.dp))
+
+                        // Bottom progress times
+                        Row(
+                            modifier = GlanceModifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.Vertical.CenterVertically
+                        ) {
+                            Text(
+                                text = "${entry.startTime} – ${entry.endTime}",
+                                style = TextStyle(
+                                    color = color(Color(0xFF262322)),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                modifier = GlanceModifier.defaultWeight()
+                            )
+                            if (isNow) {
+                                Text(
+                                    text = "$minLeft min left",
+                                    style = TextStyle(
+                                        color = color(Color(0xFF262322)),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                            } else if (isDone) {
+                                Text(
+                                    text = "Completed",
+                                    style = TextStyle(
+                                        color = color(Color(0xFF726E6A)),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun DefaultHourView(context: Context, hourOffset: Int) {
         Column(
             modifier = GlanceModifier.fillMaxSize()
         ) {
@@ -668,11 +1244,15 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
     // 3. WEEK VIEW (Image 3)
     // ─────────────────────────────────────────────────────────────────────────
     @Composable
-    private fun WeekView(context: Context) {
+    private fun WeekView(
+        context: Context,
+        weekCalStart: Calendar,
+        todayCal: Calendar
+    ) {
         Column(
             modifier = GlanceModifier.fillMaxSize()
         ) {
-            // Days Row [Mon 10 | Tue 11 | Wed 12 | Thu 13 | [Fri 14] | Sat 15 | Sun 16]
+            // Days Row dynamically calculated for the current week
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Vertical.CenterVertically
@@ -680,13 +1260,17 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 // Aligns exactly with the 26.dp time column below
                 Spacer(modifier = GlanceModifier.width(26.dp))
 
-                DayColumnHeader(day = "Mon", date = "10", isToday = false)
-                DayColumnHeader(day = "Tue", date = "11", isToday = false)
-                DayColumnHeader(day = "Wed", date = "12", isToday = false)
-                DayColumnHeader(day = "Thu", date = "13", isToday = false)
-                DayColumnHeader(day = "Fri", date = "14", isToday = true)
-                DayColumnHeader(day = "Sat", date = "15", isToday = false)
-                DayColumnHeader(day = "Sun", date = "16", isToday = false)
+                val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                for (i in 0 until 7) {
+                    val c = (weekCalStart.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, i) }
+                    val isToday = c.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                            c.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)
+                    DayColumnHeader(
+                        day = dayNames[i],
+                        date = c.get(Calendar.DAY_OF_MONTH).toString(),
+                        isToday = isToday
+                    )
+                }
             }
 
             Spacer(modifier = GlanceModifier.height(14.dp))
@@ -917,7 +1501,12 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
     // 4. MONTH VIEW (Bonus / Complete experience)
     // ─────────────────────────────────────────────────────────────────────────
     @Composable
-    private fun MonthView(context: Context) {
+    private fun MonthView(
+        context: Context,
+        entries: List<GlanceTimetableEntry>,
+        todayKey: String,
+        todayCal: Calendar
+    ) {
         Column(
             modifier = GlanceModifier.fillMaxSize()
         ) {
@@ -942,6 +1531,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 listOf("8", "9", "10", "11", "12", "13", "14"),
                 listOf("15", "16", "17", "18", "19", "20", "21")
             )
+            val todayDateStr = todayCal.get(Calendar.DAY_OF_MONTH).toString()
 
             weeks.forEach { week ->
                 Row(
@@ -949,7 +1539,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                     verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
                     week.forEach { date ->
-                        val isToday = date == "14"
+                        val isToday = date == todayDateStr
                         Box(
                             modifier = GlanceModifier.defaultWeight(),
                             contentAlignment = Alignment.Center
@@ -984,11 +1574,17 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
             Spacer(modifier = GlanceModifier.height(10.dp))
 
             // Upcoming Exam / Event summary card
+            val todayEntry = entries.firstOrNull { it.day == todayKey } ?: entries.firstOrNull()
+            val cardTitle = todayEntry?.subject ?: "Theory Test"
+            val cardSubtitle = if (todayEntry != null) "${todayEntry.startTime} – ${todayEntry.endTime}" else "10:00 – 11:00 AM"
+            val cardRoom = todayEntry?.room?.ifEmpty { "Room 244" } ?: "Room 244"
+            val cardBg = if (todayEntry != null) getCardDrawable(todayEntry.colorCode, todayEntry.subject) else R.drawable.card_pink_bg
+
             Box(
                 modifier = GlanceModifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .background(ImageProvider(R.drawable.card_pink_bg))
+                    .background(ImageProvider(cardBg))
                     .padding(horizontal = 14.dp, vertical = 10.dp)
                     .clickable(launchAppIntent(context)),
                 contentAlignment = Alignment.CenterStart
@@ -999,7 +1595,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 ) {
                     Column(modifier = GlanceModifier.defaultWeight()) {
                         Text(
-                            text = "Theory Test",
+                            text = cardTitle,
                             style = TextStyle(
                                 color = color(Color(0xFF181818)),
                                 fontSize = 15.sp,
@@ -1007,7 +1603,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                             )
                         )
                         Text(
-                            text = "10:00 – 11:00 AM",
+                            text = cardSubtitle,
                             style = TextStyle(
                                 color = color(Color(0xFF42383D)),
                                 fontSize = 11.sp
@@ -1022,7 +1618,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Room 244",
+                            text = cardRoom,
                             style = TextStyle(
                                 color = color(Color(0xFF262322)),
                                 fontSize = 11.sp,
@@ -1086,7 +1682,7 @@ class NavigateHourAction : ActionCallback {
         val delta = parameters[DeltaActionKey] ?: 0
         val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
         val current = prefs.getInt("hour_offset", 0)
-        val newOffset = (current + delta).coerceIn(-1, 2)
+        val newOffset = (current + delta).coerceIn(-5, 5)
         prefs.edit().putInt("hour_offset", newOffset).apply()
 
         // Immediately update the tapped widget instance

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/schedule.dart';
+import 'upload_timetable_screen.dart';
 
 // ── Models & Helpers ──────────────────────────────────────────────────────
 
@@ -23,6 +25,44 @@ String _formatTime(DateTime time) {
   return '$h:$m $ampm';
 }
 
+Color _hexToColor(String hexStr, int index) {
+  try {
+    String clean = hexStr.replaceAll('#', '').replaceAll('0x', '').replaceAll('0X', '');
+    if (clean.length == 6) clean = 'FF$clean';
+    return Color(int.parse(clean, radix: 16));
+  } catch (_) {
+    final colors = [
+      const Color(0xFFE8CACF),
+      const Color(0xFFCDE6E2),
+      const Color(0xFFDBD3EE),
+      const Color(0xFFEFCCB8),
+      const Color(0xFFE9CCAA),
+      const Color(0xFFBDE4C9),
+      const Color(0xFFB5E2FA),
+    ];
+    return colors[index % colors.length];
+  }
+}
+
+Color _darkenColor(Color c) {
+  final hsl = HSLColor.fromColor(c);
+  return hsl.withLightness((hsl.lightness - 0.15).clamp(0.0, 1.0)).toColor();
+}
+
+IconData _iconForSubject(String subject) {
+  final s = subject.toLowerCase();
+  if (s.contains('math') || s.contains('calc') || s.contains('algebra')) return Icons.functions_rounded;
+  if (s.contains('code') || s.contains('cs') || s.contains('prog') || s.contains('comp')) return Icons.code_rounded;
+  if (s.contains('art') || s.contains('design') || s.contains('visual')) return Icons.brush_rounded;
+  if (s.contains('music')) return Icons.music_note_rounded;
+  if (s.contains('hist')) return Icons.history_edu_rounded;
+  if (s.contains('science') || s.contains('chem') || s.contains('bio') || s.contains('phy')) return Icons.science_rounded;
+  if (s.contains('geo')) return Icons.public_rounded;
+  if (s.contains('lang') || s.contains('eng') || s.contains('lote')) return Icons.translate_rounded;
+  if (s.contains('drama') || s.contains('theater')) return Icons.theater_comedy_rounded;
+  return Icons.school_rounded;
+}
+
 class Course {
   final String title;
   final String subtitle;
@@ -34,6 +74,24 @@ class Course {
   final IconData icon;
 
   Course(this.title, this.subtitle, this.startTime, this.endTime, this.room, this.color, this.iconColor, this.icon);
+
+  bool isHappeningNow(DateTime now) => now.isAfter(startTime) && now.isBefore(endTime);
+  bool isCompleted(DateTime now) => now.isAfter(endTime);
+  bool isUpcoming(DateTime now) => now.isBefore(startTime);
+
+  double progress(DateTime now) {
+    if (now.isBefore(startTime)) return 0.0;
+    if (now.isAfter(endTime)) return 1.0;
+    final totalSec = endTime.difference(startTime).inSeconds;
+    if (totalSec <= 0) return 1.0;
+    final elapsedSec = now.difference(startTime).inSeconds;
+    return (elapsedSec / totalSec).clamp(0.0, 1.0);
+  }
+
+  int minutesRemaining(DateTime now) {
+    if (now.isAfter(endTime)) return 0;
+    return endTime.difference(now).inMinutes;
+  }
 }
 
 // ── Screen ────────────────────────────────────────────────────────────────
@@ -50,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late Timer _timer;
   bool _hasTimetable = true; 
 
-  late List<Course> _allCourses;
+  List<Course> _allCourses = [];
 
   @override
   void initState() {
@@ -58,80 +116,73 @@ class _HomeScreenState extends State<HomeScreen> {
     final now = DateTime.now();
     _selectedDate = DateTime(now.year, now.month, now.day);
     
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    final tuesday = monday.add(const Duration(days: 1));
-    final wednesday = monday.add(const Duration(days: 2));
-    final thursday = monday.add(const Duration(days: 3));
-    final friday = monday.add(const Duration(days: 4));
-    final saturday = monday.add(const Duration(days: 5));
-    final sunday = monday.add(const Duration(days: 6));
+    _refreshCourses();
+    timetableNotifier.addListener(_onTimetableChanged);
 
-    // Comprehensive mock data for the week
-    _allCourses = [
-      // Monday
-      Course('Engineering Graphics', 'Spatial reasoning', DateTime(monday.year, monday.month, monday.day, 9, 0), DateTime(monday.year, monday.month, monday.day, 10, 30), 'Room 302', const Color(0xFFE8CACF), const Color(0xFFDDA9AF), Icons.edit_rounded),
-      Course('Visual Communication', 'Sketching & rendering', DateTime(monday.year, monday.month, monday.day, 11, 0), DateTime(monday.year, monday.month, monday.day, 12, 30), 'Studio A', const Color(0xFFCDE6E2), const Color(0xFFB5D8D4), Icons.brush_rounded),
-      Course('Design Theory', 'Fundamentals of design', DateTime(monday.year, monday.month, monday.day, 13, 30), DateTime(monday.year, monday.month, monday.day, 15, 0), 'Hall 2', const Color(0xFFDBD3EE), const Color(0xFFAFA2D5), Icons.lightbulb_rounded),
-      Course('Art History', 'Renaissance to Modern', DateTime(monday.year, monday.month, monday.day, 15, 30), DateTime(monday.year, monday.month, monday.day, 17, 0), 'Lecture Hall B', const Color(0xFFEFCCB8), const Color(0xFFC09D8B), Icons.museum_rounded),
-      
-      // Tuesday
-      Course('Architectural History', 'Styles and movements', DateTime(tuesday.year, tuesday.month, tuesday.day, 9, 0), DateTime(tuesday.year, tuesday.month, tuesday.day, 10, 30), 'Hall 1', const Color(0xFFDBD3EE), const Color(0xFFAFA2D5), Icons.history_rounded),
-      Course('Building Technology', 'Materials and methods', DateTime(tuesday.year, tuesday.month, tuesday.day, 11, 0), DateTime(tuesday.year, tuesday.month, tuesday.day, 13, 0), 'Lab B', const Color(0xFFEFCCB8), const Color(0xFFC09D8B), Icons.construction_rounded),
-      Course('Environmental Science', 'Sustainability basics', DateTime(tuesday.year, tuesday.month, tuesday.day, 14, 0), DateTime(tuesday.year, tuesday.month, tuesday.day, 15, 30), 'Room 105', const Color(0xFFCDE6E2), const Color(0xFFB5D8D4), Icons.eco_rounded),
-      Course('Studio Practice', 'Hands-on project work', DateTime(tuesday.year, tuesday.month, tuesday.day, 16, 0), DateTime(tuesday.year, tuesday.month, tuesday.day, 18, 0), 'Main Studio', const Color(0xFFE8CACF), const Color(0xFFDDA9AF), Icons.architecture_rounded),
-
-      // Wednesday
-      Course('Housing Design', 'Urban living concepts', DateTime(wednesday.year, wednesday.month, wednesday.day, 9, 30), DateTime(wednesday.year, wednesday.month, wednesday.day, 11, 30), 'Studio C', const Color(0xFFE8CACF), const Color(0xFFDDA9AF), Icons.home_work_rounded),
-      Course('Structural Mechanics', 'Forces and loads', DateTime(wednesday.year, wednesday.month, wednesday.day, 12, 30), DateTime(wednesday.year, wednesday.month, wednesday.day, 14, 0), 'Room 201', const Color(0xFFDBD3EE), const Color(0xFFAFA2D5), Icons.foundation_rounded),
-      Course('Model Making', 'Physical prototyping', DateTime(wednesday.year, wednesday.month, wednesday.day, 14, 30), DateTime(wednesday.year, wednesday.month, wednesday.day, 16, 30), 'Workshop', const Color(0xFFEFCCB8), const Color(0xFFC09D8B), Icons.cut_rounded),
-      Course('CAD Basics', 'AutoCAD intro', DateTime(wednesday.year, wednesday.month, wednesday.day, 17, 0), DateTime(wednesday.year, wednesday.month, wednesday.day, 18, 30), 'Computer Lab', const Color(0xFFCDE6E2), const Color(0xFFB5D8D4), Icons.computer_rounded),
-
-      // Thursday
-      Course('Digital Modeling', '3D software tools', DateTime(thursday.year, thursday.month, thursday.day, 9, 0), DateTime(thursday.year, thursday.month, thursday.day, 11, 0), 'Computer Lab', const Color(0xFFCDE6E2), const Color(0xFFB5D8D4), Icons.mouse_rounded),
-      Course('Urban Planning', 'City infrastructure', DateTime(thursday.year, thursday.month, thursday.day, 11, 30), DateTime(thursday.year, thursday.month, thursday.day, 13, 0), 'Hall 3', const Color(0xFFEFCCB8), const Color(0xFFC09D8B), Icons.map_rounded),
-      Course('Landscape Architecture', 'Outdoor spaces', DateTime(thursday.year, thursday.month, thursday.day, 14, 0), DateTime(thursday.year, thursday.month, thursday.day, 15, 30), 'Room 112', const Color(0xFFE8CACF), const Color(0xFFDDA9AF), Icons.park_rounded),
-      Course('Elective: Photography', 'Architectural photography', DateTime(thursday.year, thursday.month, thursday.day, 16, 0), DateTime(thursday.year, thursday.month, thursday.day, 17, 30), 'Media Lab', const Color(0xFFDBD3EE), const Color(0xFFAFA2D5), Icons.camera_alt_rounded),
-      
-      // Friday
-      Course('Portfolio Workshop', 'Presentation skills', DateTime(friday.year, friday.month, friday.day, 9, 30), DateTime(friday.year, friday.month, friday.day, 11, 30), 'Studio A', const Color(0xFFE8CACF), const Color(0xFFDDA9AF), Icons.work_rounded),
-      Course('Building Regulations', 'Codes & standards', DateTime(friday.year, friday.month, friday.day, 12, 30), DateTime(friday.year, friday.month, friday.day, 14, 0), 'Lecture Hall B', const Color(0xFFDBD3EE), const Color(0xFFAFA2D5), Icons.gavel_rounded),
-      Course('Guest Lecture', 'Industry insights', DateTime(friday.year, friday.month, friday.day, 14, 30), DateTime(friday.year, friday.month, friday.day, 16, 0), 'Auditorium', const Color(0xFFEFCCB8), const Color(0xFFC09D8B), Icons.mic_rounded),
-      
-      // Saturday (Half day)
-      Course('Site Visit', 'Field study & analysis', DateTime(saturday.year, saturday.month, saturday.day, 10, 0), DateTime(saturday.year, saturday.month, saturday.day, 13, 0), 'Downtown Project', const Color(0xFFCDE6E2), const Color(0xFFB5D8D4), Icons.explore_rounded),
-      
-      // Sunday (Review)
-      Course('Weekly Review', 'Group critique session', DateTime(sunday.year, sunday.month, sunday.day, 14, 0), DateTime(sunday.year, sunday.month, sunday.day, 16, 0), 'Main Studio', const Color(0xFFE8CACF), const Color(0xFFDDA9AF), Icons.people_rounded),
-    ];
-
-    // Ensure we have an ongoing/next class for TODAY so the 'Now/Next' card always shows up nicely in demo
-    // The user specifically requested to test what the card looks like when "Structural Mechanics" is ongoing!
-    final structMechOriginal = _allCourses.firstWhere((c) => c.title == 'Structural Mechanics');
-    
-    // Remove it from its original day to avoid duplicates if today happens to be that day
-    _allCourses.removeWhere((c) => c.title == 'Structural Mechanics');
-    
-    // Add it back, but scheduled for exactly right now so it triggers the ongoing state
-    _allCourses.add(
-      Course(
-        structMechOriginal.title, 
-        structMechOriginal.subtitle, 
-        DateTime(now.year, now.month, now.day, now.hour, now.minute - 10), 
-        DateTime(now.year, now.month, now.day, now.hour + 1, now.minute + 20), 
-        structMechOriginal.room, 
-        structMechOriginal.color, 
-        structMechOriginal.iconColor, 
-        structMechOriginal.icon
-      )
-    );
-
-    _timer = Timer.periodic(const Duration(minutes: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 15), (timer) {
       if (mounted) setState(() {});
     });
   }
 
+  void _onTimetableChanged() {
+    if (mounted) {
+      setState(() {
+        _refreshCourses();
+      });
+    }
+  }
+
+  void _refreshCourses() {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final Map<String, DateTime> dayToDate = {
+      'MON': DateTime(monday.year, monday.month, monday.day),
+      'TUE': DateTime(monday.year, monday.month, monday.day + 1),
+      'WED': DateTime(monday.year, monday.month, monday.day + 2),
+      'THUR': DateTime(monday.year, monday.month, monday.day + 3),
+      'FRI': DateTime(monday.year, monday.month, monday.day + 4),
+      'SAT': DateTime(monday.year, monday.month, monday.day + 5),
+      'SUN': DateTime(monday.year, monday.month, monday.day + 6),
+    };
+
+    if (globalTimetable.isEmpty) {
+      _hasTimetable = false;
+      _allCourses = [];
+      return;
+    }
+
+    _hasTimetable = true;
+    final List<Course> built = [];
+
+    for (int i = 0; i < globalTimetable.length; i++) {
+      final entry = globalTimetable[i];
+      final targetDate = dayToDate[TimetableEntry.normalizeDay(entry.day)] ?? dayToDate['MON']!;
+      final start = entry.startDateTime(targetDate);
+      final end = entry.endDateTime(targetDate);
+
+      final color = _hexToColor(entry.colorCode, i);
+      final iconColor = _darkenColor(color);
+      final icon = _iconForSubject(entry.subject);
+      final subtitle = entry.instructor.isNotEmpty ? entry.instructor : (entry.room.isNotEmpty ? entry.room : 'Scheduled Class');
+
+      built.add(Course(
+        entry.subject,
+        subtitle,
+        start,
+        end,
+        entry.room.isNotEmpty ? entry.room : 'Main Hall',
+        color,
+        iconColor,
+        icon,
+      ));
+    }
+
+    _allCourses = built;
+  }
+
   @override
   void dispose() {
+    timetableNotifier.removeListener(_onTimetableChanged);
     _timer.cancel();
     super.dispose();
   }
@@ -143,7 +194,7 @@ class _HomeScreenState extends State<HomeScreen> {
       c.startTime.day == _selectedDate.day).toList()..sort((a, b) => a.startTime.compareTo(b.startTime));
   }
 
-  Course? get _nowOrNextCourse {
+  Course? get _currentHappeningCourse {
     final now = DateTime.now();
     final todayCourses = _allCourses.where((c) => 
       c.startTime.year == now.year && 
@@ -151,7 +202,22 @@ class _HomeScreenState extends State<HomeScreen> {
       c.startTime.day == now.day).toList()..sort((a, b) => a.startTime.compareTo(b.startTime));
       
     for (var course in todayCourses) {
-      if (now.isBefore(course.endTime)) {
+      if (course.isHappeningNow(now)) {
+        return course;
+      }
+    }
+    return null;
+  }
+
+  Course? get _nextUpcomingCourse {
+    final now = DateTime.now();
+    final todayCourses = _allCourses.where((c) => 
+      c.startTime.year == now.year && 
+      c.startTime.month == now.month && 
+      c.startTime.day == now.day).toList()..sort((a, b) => a.startTime.compareTo(b.startTime));
+      
+    for (var course in todayCourses) {
+      if (course.isUpcoming(now)) {
         return course;
       }
     }
@@ -163,7 +229,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final now = DateTime.now();
     final isToday = _selectedDate.year == now.year && _selectedDate.month == now.month && _selectedDate.day == now.day;
     final todayCourses = _currentDayCourses;
-    final nowOrNext = _nowOrNextCourse;
+    final currentCourse = _currentHappeningCourse;
+    final nextCourse = _nextUpcomingCourse;
 
     return Container(
       decoration: const BoxDecoration(
@@ -235,10 +302,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             if (!_hasTimetable)
                               _buildFirstLaunch()
                             else ...[
-                              if (isToday && nowOrNext != null) ...[
+                              if (isToday) ...[
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 22),
-                                  child: _NowNextClassCard(course: nowOrNext),
+                                  child: _buildHeroPeriodCard(currentCourse, nextCourse, todayCourses),
                                 ),
                                 const SizedBox(height: 24),
                               ],
@@ -246,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               if (todayCourses.isEmpty)
                                 _buildEmptyState()
                               else
-                                _buildScheduleList(todayCourses),
+                                _buildScheduleList(todayCourses, isToday: isToday),
 
                               const SizedBox(height: 24),
                               
@@ -296,7 +363,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {
-                      setState(() => _hasTimetable = true);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => UploadTimetableScreen(
+                            onUpload: () => Navigator.pop(context),
+                            onSkip: () => Navigator.pop(context),
+                          ),
+                        ),
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF18151F),
@@ -351,17 +426,43 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildScheduleList(List<Course> courses) {
+  Widget _buildHeroPeriodCard(Course? currentCourse, Course? nextCourse, List<Course> todayCourses) {
+    final now = DateTime.now();
+    if (currentCourse != null) {
+      return _CurrentClassExpandedCard(
+        course: currentCourse,
+        nextCourse: nextCourse,
+        now: now,
+      );
+    } else if (nextCourse != null) {
+      return _UpcomingClassCard(
+        course: nextCourse,
+        now: now,
+      );
+    } else if (todayCourses.isNotEmpty) {
+      return _AllClassesCompletedCard(
+        totalCount: todayCourses.length,
+      );
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildScheduleList(List<Course> courses, {bool isToday = false}) {
     List<Widget> children = [];
+    final now = DateTime.now();
     for (int i = 0; i < courses.length; i++) {
+      final isNow = isToday && courses[i].isHappeningNow(now);
+      final isPast = isToday && courses[i].isCompleted(now);
+
       children.add(
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
           child: _CourseRow(
             course: courses[i],
-            faded: courses[i].endTime.isBefore(DateTime.now()),
+            isCurrent: isNow,
+            faded: isPast,
           ),
-        )
+        ),
       );
 
       // Check for gaps
@@ -382,7 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 timeRange: timeRangeText,
                 dotColor: const Color(0xFF5BA48B), // Green dot
               ),
-            )
+            ),
           );
         }
       }
@@ -438,9 +539,40 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _QuickActionBtn(icon: Icons.add_rounded, label: 'Add Class', onTap: () {}),
-          _QuickActionBtn(icon: Icons.upload_file_rounded, label: 'Upload', onTap: () {}),
-          _QuickActionBtn(icon: Icons.edit_calendar_rounded, label: 'Edit', onTap: () {}),
+          _QuickActionBtn(
+            icon: Icons.add_rounded, 
+            label: 'Add Class', 
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Use the Calendar tab to manage classes.')),
+              );
+            }
+          ),
+          _QuickActionBtn(
+            icon: Icons.upload_file_rounded, 
+            label: 'Upload', 
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => UploadTimetableScreen(
+                    onUpload: () => Navigator.pop(context),
+                    onSkip: () => Navigator.pop(context),
+                  ),
+                ),
+              );
+            }
+          ),
+          _QuickActionBtn(
+            icon: Icons.refresh_rounded, 
+            label: 'Refresh', 
+            onTap: () {
+              _onTimetableChanged();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Timetable refreshed.')),
+              );
+            }
+          ),
         ],
       ),
     );
@@ -644,49 +776,592 @@ class _DayChip extends StatelessWidget {
 
 class _CourseRow extends StatelessWidget {
   final Course course;
+  final bool isCurrent;
   final bool faded;
 
-  const _CourseRow({required this.course, this.faded = false});
+  const _CourseRow({
+    required this.course,
+    this.isCurrent = false,
+    this.faded = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
       height: 72,
       decoration: BoxDecoration(
         color: course.color,
         borderRadius: BorderRadius.circular(36),
-        border: Border.all(color: Colors.white.withOpacity(0.6), width: 1),
+        border: Border.all(
+          color: isCurrent ? const Color(0xFF141414) : Colors.white.withOpacity(0.6),
+          width: isCurrent ? 2.0 : 1.0,
+        ),
+        boxShadow: isCurrent ? [
+          BoxShadow(
+            color: course.color.withOpacity(0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          )
+        ] : null,
       ),
-      child: Row(
+      child: Opacity(
+        opacity: faded ? 0.55 : 1.0,
+        child: Row(
+          children: [
+            const SizedBox(width: 4),
+            Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(color: course.iconColor, shape: BoxShape.circle),
+              child: Center(
+                child: Icon(
+                  faded ? Icons.check_circle_outline_rounded : course.icon,
+                  color: Colors.white,
+                  size: 28,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          course.title,
+                          style: GoogleFonts.urbanist(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF141414)),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isCurrent) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF141414),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'NOW',
+                            style: GoogleFonts.urbanist(fontSize: 9, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    faded ? 'Completed • ${course.room}' : '${course.room} • ${course.subtitle}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.urbanist(fontSize: 12, color: const Color(0xFF6E5A62)),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 16, left: 8),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(_formatTime(course.startTime), style: GoogleFonts.urbanist(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF141414))),
+                  Text(_formatTime(course.endTime), style: GoogleFonts.urbanist(fontSize: 11, color: const Color(0xFF6E5A62))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CurrentClassExpandedCard extends StatelessWidget {
+  final Course course;
+  final Course? nextCourse;
+  final DateTime now;
+
+  const _CurrentClassExpandedCard({
+    required this.course,
+    this.nextCourse,
+    required this.now,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final durHours = course.endTime.difference(course.startTime).inHours;
+    final durMins = course.endTime.difference(course.startTime).inMinutes % 60;
+    final durText = durMins == 0 ? '${durHours}h' : '${durHours}h ${durMins}m';
+    final progress = course.progress(now);
+    final minsLeft = course.minutesRemaining(now);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: course.color,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0xFF141414).withOpacity(0.14), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: course.color.withOpacity(0.4),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(width: 4),
-          Container(
-            width: 64, height: 64,
-            decoration: BoxDecoration(color: course.iconColor, shape: BoxShape.circle),
-            child: Center(child: Icon(course.icon, color: Colors.white, size: 28)),
+          // Header Badge Row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141414),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF22C55E),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF22C55E).withOpacity(0.8),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'HAPPENING NOW',
+                          style: GoogleFonts.urbanist(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: Colors.white,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.65),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF141414)),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '$minsLeft mins left',
+                          style: GoogleFonts.urbanist(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF141414),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(course.title, style: GoogleFonts.urbanist(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF141414))),
-                const SizedBox(height: 2),
-                Text('${course.room} • ${course.subtitle}', maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.urbanist(fontSize: 12, color: const Color(0xFF6E5A62))),
-              ],
+          const SizedBox(height: 18),
+
+          // Title & Icon Row
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      style: GoogleFonts.urbanist(
+                        fontSize: 30,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF141414),
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      course.subtitle,
+                      style: GoogleFonts.urbanist(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF5B4C52),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: course.iconColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(course.icon, color: Colors.white, size: 26),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // Live Progress Bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.white.withOpacity(0.55),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF141414)),
+              minHeight: 7,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16, left: 8),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(_formatTime(course.startTime), style: GoogleFonts.urbanist(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF141414))),
-                Text(_formatTime(course.endTime), style: GoogleFonts.urbanist(fontSize: 11, color: const Color(0xFF6E5A62))),
-              ],
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _formatTime(course.startTime),
+                style: GoogleFonts.urbanist(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF141414),
+                ),
+              ),
+              Text(
+                '${(progress * 100).toInt()}% Elapsed',
+                style: GoogleFonts.urbanist(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF6E5A62),
+                ),
+              ),
+              Text(
+                _formatTime(course.endTime),
+                style: GoogleFonts.urbanist(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF141414),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          // Room & Duration Meta Row
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF141414)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Room ${course.room}',
+                          style: GoogleFonts.urbanist(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF141414),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: course.iconColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.schedule_rounded, size: 16, color: Color(0xFF141414)),
+                    const SizedBox(width: 6),
+                    Text(
+                      durText,
+                      style: GoogleFonts.urbanist(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF141414),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Next Period Info if available
+          if (nextCourse != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF141414).withOpacity(0.06),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.skip_next_rounded, size: 18, color: Color(0xFF141414)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Up next: ${nextCourse!.title} at ${_formatTime(nextCourse!.startTime)}',
+                      style: GoogleFonts.urbanist(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF141414),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    'Room ${nextCourse!.room}',
+                    style: GoogleFonts.urbanist(
+                      fontSize: 11,
+                      color: const Color(0xFF6E5A62),
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _UpcomingClassCard extends StatelessWidget {
+  final Course course;
+  final DateTime now;
+
+  const _UpcomingClassCard({
+    required this.course,
+    required this.now,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final durHours = course.endTime.difference(course.startTime).inHours;
+    final durMins = course.endTime.difference(course.startTime).inMinutes % 60;
+    final durText = durMins == 0 ? '${durHours}h' : '${durHours}h ${durMins}m';
+    final startsInMins = course.startTime.difference(now).inMinutes;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: course.color,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: Colors.white.withOpacity(0.6), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: course.color.withOpacity(0.35),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF141414),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF38BDF8),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'UP NEXT',
+                      style: GoogleFonts.urbanist(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.65),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    startsInMins <= 60 
+                        ? 'Starts in ${startsInMins.clamp(1, 1440)}m' 
+                        : 'Starts ${_formatTime(course.startTime)}',
+                    style: GoogleFonts.urbanist(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF141414),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      course.title,
+                      style: GoogleFonts.urbanist(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF141414),
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      course.subtitle,
+                      style: GoogleFonts.urbanist(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF5B4C52),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: course.iconColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(course.icon, color: Colors.white, size: 26),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.6),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF141414)),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Room ${course.room}',
+                          style: GoogleFonts.urbanist(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF141414),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: course.iconColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    '${_formatTime(course.startTime)} – ${_formatTime(course.endTime)} ($durText)',
+                    style: GoogleFonts.urbanist(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF141414),
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -694,151 +1369,57 @@ class _CourseRow extends StatelessWidget {
   }
 }
 
-class _NowNextClassCard extends StatelessWidget {
-  final Course course;
-  const _NowNextClassCard({required this.course});
+class _AllClassesCompletedCard extends StatelessWidget {
+  final int totalCount;
+
+  const _AllClassesCompletedCard({required this.totalCount});
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final isOngoing = now.isAfter(course.startTime) && now.isBefore(course.endTime);
-    
-    final topColor = course.color;
-    final bottomRightColor = course.iconColor;
-
-    final durHours = course.endTime.difference(course.startTime).inHours;
-    final durMins = course.endTime.difference(course.startTime).inMinutes % 60;
-    final durText = durMins == 0 ? '${durHours}h' : '${durHours}h ${durMins}m';
-
     return Container(
-      height: 230,
       decoration: BoxDecoration(
-        color: topColor, // Top and Left sections share this background
-        borderRadius: BorderRadius.circular(24),
+        color: const Color(0xFFCDE6E2),
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: Colors.white.withOpacity(0.7), width: 1.5),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 8))
+          BoxShadow(
+            color: const Color(0xFFCDE6E2).withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
+      padding: const EdgeInsets.all(22),
+      child: Row(
         children: [
-          // Top Half
-          Expanded(
-            flex: 12,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          course.title,
-                          style: GoogleFonts.urbanist(fontSize: 24, fontWeight: FontWeight.w400, color: const Color(0xFF141414), height: 1.1),
-                        ),
-                      ),
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.5),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.more_horiz, color: Color(0xFF141414), size: 20),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    course.subtitle,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.urbanist(fontSize: 13, color: const Color(0xFF5B4C52), height: 1.3),
-                  ),
-                ],
-              ),
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+              color: Color(0xFF141414),
+              shape: BoxShape.circle,
             ),
+            child: const Icon(Icons.done_all_rounded, color: Colors.white, size: 26),
           ),
-          // Bottom Half
+          const SizedBox(width: 16),
           Expanded(
-            flex: 11,
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Bottom Left (Room and Time)
-                Expanded(
-                  flex: 4,
-                  child: Container(
-                    padding: const EdgeInsets.only(left: 20, top: 16, bottom: 16, right: 8),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Room', style: GoogleFonts.urbanist(fontSize: 11, color: const Color(0xFF6E5A62))),
-                            Text(
-                              course.room.split(' ').last, 
-                              style: GoogleFonts.urbanist(fontSize: 28, fontWeight: FontWeight.w300, color: const Color(0xFF141414), height: 1.1)
-                            ),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            const Icon(Icons.access_time_rounded, size: 12, color: Color(0xFF6E5A62)),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                isOngoing ? 'Ongoing now' : 'Starts ${_formatTime(course.startTime)}', 
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.urbanist(fontSize: 10, color: const Color(0xFF6E5A62))
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                Text(
+                  "All classes completed!",
+                  style: GoogleFonts.urbanist(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF141414),
                   ),
                 ),
-                // Bottom Right (Duration and Action)
-                Expanded(
-                  flex: 5,
-                  child: Container(
-                    color: bottomRightColor,
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          left: 20,
-                          top: 16,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Duration', style: GoogleFonts.urbanist(fontSize: 11, color: const Color(0xFF6E5A62))),
-                              Text(
-                                durText, 
-                                style: GoogleFonts.urbanist(fontSize: 28, fontWeight: FontWeight.w300, color: const Color(0xFF141414), height: 1.1)
-                              ),
-                            ],
-                          ),
-                        ),
-                        Positioned(
-                          right: 12,
-                          bottom: 12,
-                          child: Container(
-                            width: 32,
-                            height: 32,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF141414),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.arrow_outward_rounded, color: Colors.white, size: 18),
-                          ),
-                        ),
-                      ],
-                    ),
+                const SizedBox(height: 4),
+                Text(
+                  "You've completed all $totalCount scheduled periods for today.",
+                  style: GoogleFonts.urbanist(
+                    fontSize: 13,
+                    color: const Color(0xFF4A5568),
                   ),
                 ),
               ],

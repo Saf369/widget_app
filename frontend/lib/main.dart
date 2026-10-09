@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,6 +13,7 @@ import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/upload_timetable_screen.dart';
 import 'screens/loading_screen.dart';
+import 'models/schedule.dart';
 import 'package:home_widget/home_widget.dart';
 
 @pragma("vm:entry-point")
@@ -22,7 +24,11 @@ Future<void> backgroundCallback(Uri? uri) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  HomeWidget.registerInteractivityCallback(backgroundCallback);
+  if (!kIsWeb) {
+    HomeWidget.registerInteractivityCallback(backgroundCallback);
+  }
+
+  await loadSavedTimetable();
   
   try {
     await Firebase.initializeApp(
@@ -85,6 +91,7 @@ class AppShellState extends State<AppShell> {
   }
 
   Future<void> _updateNativeWidget() async {
+    if (kIsWeb) return;
     try {
       final currentTab = await HomeWidget.getWidgetData<String>('active_tab');
       if (currentTab == null) {

@@ -1,54 +1,73 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi import APIRouter, UploadFile, File, HTTPException, status
 from typing import Dict, Any
-import uuid
+import logging
+from app.services.ai_service import extract_timetable
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.post("/analyze-timetable/")
+ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp"}
+
+@router.post("/analyze-timetable/", response_model=Dict[str, Any])
 async def analyze_timetable(file: UploadFile = File(...)) -> Dict[str, Any]:
     """
-    Accepts an uploaded timetable image or PDF from the Flutter client,
-    uploads it to Firebase Storage, processes it via an OCR/LLM pipeline,
+    Accepts an uploaded timetable PDF or PNG/JPG/WEBP image,
+    processes it via Gemini multimodal AI pipeline,
     and returns the structured class schedule.
     """
     if not file.filename:
-        raise HTTPException(status_code=400, detail="No file provided")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="No file provided. Please select a PDF or image file."
+        )
 
-    # TODO: Validate file extension (png, jpg, pdf)
-    
-    # 1. Generate a unique filename and read the file bytes
-    file_bytes = await file.read()
-    unique_filename = f"{uuid.uuid4()}_{file.filename}"
-    
-    # 2. TODO: Upload `file_bytes` to Firebase Storage
-    
-    # 3. TODO: Send image to Gemini / OCR LLM pipeline to extract timetable data
-    
-    # --- MOCK RESPONSE FOR NOW TO UNBLOCK FRONTEND ---
-    # We will replace this with real ML logic in the next step.
-    return {
-        "is_timetable": True,
-        "reasoning": "Detected 5 classes across a 7-day week structure.",
-        "entries": [
-            {
-                "id": str(uuid.uuid4()),
-                "course_name": "CS101 Intro to Programming",
-                "instructor": "Dr. Smith",
-                "location": "Room 304",
-                "day_of_week": "Monday",
-                "start_time": "09:00",
-                "end_time": "10:30",
-                "color_code": "0xFFE8F5E9"
-            },
-            {
-                "id": str(uuid.uuid4()),
-                "course_name": "MATH201 Calculus II",
-                "instructor": "Dr. Johnson",
-                "location": "Room 102",
-                "day_of_week": "Wednesday",
-                "start_time": "11:00",
-                "end_time": "12:30",
-                "color_code": "0xFFE3F2FD"
-            }
-        ]
-    }
+    # Validate file extension
+    filename_lower = file.filename.lower()
+    if not any(filename_lower.endswith(ext) for ext in ALLOWED_EXTENSIONS):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type. Please upload a PDF or PNG/JPG/WEBP image."
+        )
+
+    try:
+        # Read file bytes
+        file_bytes = await file.read()
+        
+        # Check file size (e.g., 15MB limit)
+        max_bytes = settings.max_upload_size_mb * 1024 * 1024
+        if len(file_bytes) > max_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File exceeds maximum size limit of {settings.max_upload_size_mb}MB."
+            )
+
+        if len(file_bytes) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Uploaded file is empty."
+            )
+
+        logger.info(f"Processing uploaded timetable: {file.filename} ({len(file_bytes)} bytes)")
+
+        # Extract timetable using Gemini Multimodal AI
+        result = await extract_timetable(
+            file_bytes=file_bytes,
+            filename=file.filename,
+            content_type=file.content_type,
+        )
+
+        return result.model_dump()
+
+    except HTTPException:
+        raise
+    except ValueError as ve:
+        logger.warning(f"Validation error analyzing timetable: {ve}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+    except Exception as e:
+        logger.exception(f"Unexpected error analyzing timetable: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process timetable: {str(e)}"
+        )
