@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     firebase_storage_bucket: str = ""
     ai_api_key: str = ""
     gemini_api_key: str = ""
-    ai_model: str = "gemini-2.5-flash"
+    ai_model: str = "gemini-3.8-flash"
     max_upload_size_mb: int = 15
     allowed_origins: str = "*"
 

@@ -87,23 +87,18 @@ async def extract_timetable(file_bytes: bytes, filename: str, content_type: Opti
         "4. Be thorough and make sure no classes are missed across all days of the week."
     )
 
-    try:
-        response = client.models.generate_content(
-            model=settings.ai_model,
-            contents=[file_part, prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                response_schema=TimetableAnalysisResponse,
-                temperature=0.1,
-            ),
-        )
-    except Exception as e:
-        logger.error(f"Gemini API error during timetable extraction: {e}")
-        # Try fallback model if configured model had an issue
-        if settings.ai_model != "gemini-2.5-flash":
-            logger.info("Retrying with gemini-2.5-flash...")
+    models_to_try = [settings.ai_model]
+    for candidate in ["gemini-3.7-flash", "gemini-3.5-flash"]:
+        if candidate not in models_to_try:
+            models_to_try.append(candidate)
+
+    response = None
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            logger.info(f"Extracting timetable using model: {model_name}")
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model=model_name,
                 contents=[file_part, prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -111,8 +106,14 @@ async def extract_timetable(file_bytes: bytes, filename: str, content_type: Opti
                     temperature=0.1,
                 ),
             )
-        else:
-            raise
+            if response and response.text:
+                break
+        except Exception as e:
+            logger.warning(f"Model {model_name} encountered error: {e}")
+            last_error = e
+
+    if not response or not response.text:
+        raise last_error or RuntimeError("Failed to extract timetable with available models")
 
     # Parse response
     result_json = json.loads(response.text)
