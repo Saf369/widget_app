@@ -61,7 +61,7 @@ class SettingsScreen extends StatelessWidget {
                           child: const Icon(Icons.person, color: Colors.white, size: 28),
                         ),
                         const Spacer(),
-                        _GlassIconButton(child: _ThreeDots(color: const Color(0xFF1A1A1A))),
+                        const _GlassIconButton(child: _ThreeDots(color: Color(0xFF1A1A1A))),
                       ],
                     ),
                   ),
@@ -120,7 +120,7 @@ class SettingsScreen extends StatelessWidget {
                       Opacity(
                         opacity: 0.6,
                         child: _SettingsItem(
-                          iconBg: Color(0xFFD6CBE6),
+                          iconBg: const Color(0xFFD6CBE6),
                           icon: Icons.smart_toy_outlined,
                           label: 'AI Tutor',
                           trailing: Row(
@@ -217,9 +217,8 @@ class SettingsScreen extends StatelessWidget {
 }
 
 class _GlassIconButton extends StatelessWidget {
-  final Widget? child;
-  final IconData? icon;
-  const _GlassIconButton({this.child, this.icon});
+  final Widget child;
+  const _GlassIconButton({required this.child});
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +231,7 @@ class _GlassIconButton extends StatelessWidget {
         border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
       ),
       child: Center(
-        child: child ?? Icon(icon, color: const Color(0xFF1A1A1A), size: 22),
+        child: child,
       ),
     );
   }
@@ -518,22 +517,14 @@ class _ToggleOff extends StatelessWidget {
 }
 
 class _ChevronTrailing extends StatelessWidget {
-  final String? subtitle;
-  const _ChevronTrailing({this.subtitle});
+  const _ChevronTrailing();
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (subtitle != null) ...[
-          Text(subtitle!,
-              style: GoogleFonts.urbanist(
-                  fontSize: 14, color: const Color(0xFF7A748C))),
-          const SizedBox(width: 6),
-        ],
-        const Icon(Icons.chevron_right_rounded,
-            color: Color(0xFF7A748C), size: 20),
-      ],
+    return const Icon(
+      Icons.chevron_right_rounded,
+      color: Color(0xFF7A748C),
+      size: 20,
     );
   }
 }

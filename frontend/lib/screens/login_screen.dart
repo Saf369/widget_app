@@ -219,11 +219,11 @@ class LoginScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 24),
                         // Social Logins
-                        Row(
+                        const Row(
                           children: [
-                            const Expanded(child: _SocialButton(initial: 'G', label: 'Google')),
-                            const SizedBox(width: 12),
-                            const Expanded(child: _SocialButton(initial: 'C', label: 'Campus SSO')),
+                            Expanded(child: _SocialButton(initial: 'G', label: 'Google')),
+                            SizedBox(width: 12),
+                            Expanded(child: _SocialButton(initial: 'C', label: 'Campus SSO')),
                           ],
                         ),
                         const SizedBox(height: 40),

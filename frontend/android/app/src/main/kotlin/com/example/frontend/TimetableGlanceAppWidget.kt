@@ -1047,21 +1047,33 @@ class SwitchTabAction : ActionCallback {
     ) {
         val tab = parameters[TabActionKey] ?: "day"
         val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
-        prefs.edit().putString("active_tab", tab).commit()
+        prefs.edit().putString("active_tab", tab).apply()
 
-        val manager = GlanceAppWidgetManager(context)
-        val glanceIds = manager.getGlanceIds(TimetableGlanceAppWidget::class.java)
-        val allIds = (glanceIds + glanceId).distinct()
-        allIds.forEach { id ->
-            updateAppWidgetState<HomeWidgetGlanceState>(
-                context = context,
-                definition = HomeWidgetGlanceStateDefinition(),
-                glanceId = id
-            ) {
-                HomeWidgetGlanceState(context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE))
-            }
-            TimetableGlanceAppWidget().update(context, id)
+        // Immediately update the tapped widget instance
+        updateAppWidgetState<HomeWidgetGlanceState>(
+            context = context,
+            definition = HomeWidgetGlanceStateDefinition(),
+            glanceId = glanceId
+        ) {
+            HomeWidgetGlanceState(prefs)
         }
+        TimetableGlanceAppWidget().update(context, glanceId)
+
+        // Update any other widget instances
+        try {
+            val manager = GlanceAppWidgetManager(context)
+            val glanceIds = manager.getGlanceIds(TimetableGlanceAppWidget::class.java)
+            glanceIds.filter { it != glanceId }.forEach { id ->
+                updateAppWidgetState<HomeWidgetGlanceState>(
+                    context = context,
+                    definition = HomeWidgetGlanceStateDefinition(),
+                    glanceId = id
+                ) {
+                    HomeWidgetGlanceState(prefs)
+                }
+                TimetableGlanceAppWidget().update(context, id)
+            }
+        } catch (_: Exception) {}
     }
 }
 
@@ -1075,20 +1087,32 @@ class NavigateHourAction : ActionCallback {
         val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
         val current = prefs.getInt("hour_offset", 0)
         val newOffset = (current + delta).coerceIn(-1, 2)
-        prefs.edit().putInt("hour_offset", newOffset).commit()
+        prefs.edit().putInt("hour_offset", newOffset).apply()
 
-        val manager = GlanceAppWidgetManager(context)
-        val glanceIds = manager.getGlanceIds(TimetableGlanceAppWidget::class.java)
-        val allIds = (glanceIds + glanceId).distinct()
-        allIds.forEach { id ->
-            updateAppWidgetState<HomeWidgetGlanceState>(
-                context = context,
-                definition = HomeWidgetGlanceStateDefinition(),
-                glanceId = id
-            ) {
-                HomeWidgetGlanceState(context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE))
-            }
-            TimetableGlanceAppWidget().update(context, id)
+        // Immediately update the tapped widget instance
+        updateAppWidgetState<HomeWidgetGlanceState>(
+            context = context,
+            definition = HomeWidgetGlanceStateDefinition(),
+            glanceId = glanceId
+        ) {
+            HomeWidgetGlanceState(prefs)
         }
+        TimetableGlanceAppWidget().update(context, glanceId)
+
+        // Update any other widget instances
+        try {
+            val manager = GlanceAppWidgetManager(context)
+            val glanceIds = manager.getGlanceIds(TimetableGlanceAppWidget::class.java)
+            glanceIds.filter { it != glanceId }.forEach { id ->
+                updateAppWidgetState<HomeWidgetGlanceState>(
+                    context = context,
+                    definition = HomeWidgetGlanceStateDefinition(),
+                    glanceId = id
+                ) {
+                    HomeWidgetGlanceState(prefs)
+                }
+                TimetableGlanceAppWidget().update(context, id)
+            }
+        } catch (_: Exception) {}
     }
 }

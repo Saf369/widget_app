@@ -704,7 +704,6 @@ class _NowNextClassCard extends StatelessWidget {
     final isOngoing = now.isAfter(course.startTime) && now.isBefore(course.endTime);
     
     final topColor = course.color;
-    final middleColor = Colors.white.withOpacity(0.35);
     final bottomRightColor = course.iconColor;
 
     final durHours = course.endTime.difference(course.startTime).inHours;
@@ -921,41 +920,6 @@ class _ThreeDots extends StatelessWidget {
   }
 }
 
-class _SphereIllustrationPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final bgPaint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Color(0xFF7C4883), Color(0xFF683786), Color(0xFF5D2B82)],
-      ).createShader(Rect.fromLTWH(0, 0, w, h));
-    canvas.drawRect(Rect.fromLTWH(0, 0, w, h), bgPaint);
-
-    void drawSphere(double cx, double cy, double r, List<Color> colors, List<double> stops, {double dx = 0, double dy = 0, double blur = 0, double opacity = 1.0}) {
-      if (blur > 0) {
-        final shadowPaint = Paint()
-          ..color = Colors.black.withOpacity(opacity)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
-        canvas.drawCircle(Offset(cx + dx, cy + dy), r, shadowPaint);
-      }
-      final gradPaint = Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.35, -0.30), radius: 1.0,
-          colors: colors, stops: stops,
-        ).createShader(Rect.fromCircle(center: Offset(cx, cy), radius: r));
-      canvas.drawCircle(Offset(cx, cy), r, gradPaint);
-    }
-
-    drawSphere(40.5, 36.5, 52.5, const [Color(0xFFE06C7C), Color(0xFF9D384C), Color(0xFF4A1523)], const [0.0, 0.60, 1.0], dx: 4, dy: 6, blur: 7.5, opacity: 0.25);
-    drawSphere(70.5, h - 30.5, 62.5, const [Color(0xFFA453DC), Color(0xFF6E279A), Color(0xFF350B52)], const [0.0, 0.65, 1.0], dx: 4, dy: 8, blur: 9, opacity: 0.3);
-    drawSphere(w - 48, 44, 40, const [Color(0xFFF089BE), Color(0xFFBC4D8B), Color(0xFF661A48)], const [0.0, 0.65, 1.0]);
-  }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 
 class _FreeTimeCard extends StatelessWidget {
   final String title;

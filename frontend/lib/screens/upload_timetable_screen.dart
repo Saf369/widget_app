@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:math' as math;
 import 'dart:ui';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -232,9 +231,9 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
                           ),
                           const SizedBox(height: 24),
                           // File format tags
-                          Row(
+                          const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
+                            children: [
                               _FormatTag('PDF'),
                               SizedBox(width: 8),
                               _FormatTag('PNG'),
@@ -400,17 +399,13 @@ class _FormatTag extends StatelessWidget {
 // Custom Painter for dashed rounded rectangle border
 class _DashedRectPainter extends CustomPainter {
   final Color color;
-  final double strokeWidth;
-  final double gap;
-  final double dashWidth;
-  final double radius;
+  static const double strokeWidth = 1.5;
+  static const double gap = 5.0;
+  static const double dashWidth = 6.0;
+  static const double radius = 24.0;
 
   _DashedRectPainter({
     required this.color,
-    this.strokeWidth = 1.5,
-    this.gap = 6.0,
-    this.dashWidth = 6.0,
-    this.radius = 32.0,
   });
 
   @override
@@ -422,7 +417,7 @@ class _DashedRectPainter extends CustomPainter {
 
     final RRect rrect = RRect.fromRectAndRadius(
       Rect.fromLTWH(0, 0, size.width, size.height),
-      Radius.circular(radius),
+      const Radius.circular(radius),
     );
 
     Path path = Path()..addRRect(rrect);

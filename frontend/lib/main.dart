@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/gestures.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
@@ -14,7 +13,6 @@ import 'screens/login_screen.dart';
 import 'screens/upload_timetable_screen.dart';
 import 'screens/loading_screen.dart';
 import 'package:home_widget/home_widget.dart';
-import 'widgets/home_widget_ui.dart';
 
 @pragma("vm:entry-point")
 Future<void> backgroundCallback(Uri? uri) async {
@@ -78,7 +76,6 @@ class AppShell extends StatefulWidget {
 
 class AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
-  int _previousIndex = 0;
   AppState _appState = AppState.login;
 
   @override
@@ -103,7 +100,6 @@ class AppShellState extends State<AppShell> {
   void goToTab(int index) {
     if (_selectedIndex == index) return;
     setState(() {
-      _previousIndex = _selectedIndex;
       _selectedIndex = index;
     });
   }

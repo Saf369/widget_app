@@ -90,7 +90,7 @@ class AiChatScreen extends StatelessWidget {
                       ),
                       const Spacer(),
                       // More
-                      _GlassCircleButton(child: _ThreeDots(color: const Color(0xFF141414))),
+                      const _GlassCircleButton(child: _ThreeDots(color: Color(0xFF141414))),
                     ],
                   ),
                 ),
@@ -152,7 +152,7 @@ class AiChatScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 16),
                         // AI message 1
-                        _AiMessage(
+                        const _AiMessage(
                           text: "Hi Anna! I'm your study assistant. Ask me anything about Spatial Aptitude, or I can quiz you.",
                         ),
                         const SizedBox(height: 20),
@@ -162,9 +162,9 @@ class AiChatScreen extends StatelessWidget {
                           child: Container(
                             width: 250,
                             padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0E0E10),
-                              borderRadius: const BorderRadius.only(
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF0E0E10),
+                              borderRadius: BorderRadius.only(
                                 topLeft: Radius.circular(24),
                                 topRight: Radius.circular(24),
                                 bottomLeft: Radius.circular(24),
@@ -182,17 +182,17 @@ class AiChatScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 20),
                         // AI message 2
-                        _AiMessage(
+                        const _AiMessage(
                           text: "Of course! Mental folding is picturing how a flat shape would look once it's folded into 3D, like turning a paper net into a cube. Try it: which faces would touch?",
                         ),
                         const SizedBox(height: 16),
                         // Suggestion chips
-                        Padding(
-                          padding: const EdgeInsets.only(left: 38),
+                        const Padding(
+                          padding: EdgeInsets.only(left: 38),
                           child: Wrap(
                             spacing: 8,
                             runSpacing: 8,
-                            children: const [
+                            children: [
                               _SuggestionChip(label: 'Quiz me'),
                               _SuggestionChip(label: 'Show an example'),
                               _SuggestionChip(label: 'Summarize'),

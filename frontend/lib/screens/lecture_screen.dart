@@ -87,22 +87,22 @@ class LectureScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Top buttons
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   child: Row(
                     children: [
                       // Back placeholder
-                      const SizedBox(width: 54, height: 54),
-                      const Spacer(),
+                      SizedBox(width: 54, height: 54),
+                      Spacer(),
                       // Share
                       _GlassButton(
-                        child: const Icon(Icons.share_outlined,
+                        child: Icon(Icons.share_outlined,
                             color: Color(0xFF141414), size: 20),
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       // More
                       _GlassButton(
-                        child: _ThreeDots(color: const Color(0xFF141414)),
+                        child: _ThreeDots(color: Color(0xFF141414)),
                       ),
                     ],
                   ),
@@ -135,10 +135,10 @@ class LectureScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 // Tabs
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
-                    children: const [
+                    children: [
                       _Tab(label: 'Literature', isActive: false),
                       SizedBox(width: 3),
                       _Tab(label: 'Videos', isActive: true),
@@ -161,28 +161,28 @@ class LectureScreen extends StatelessWidget {
                       ),
                       border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
                     ),
-                    child: SingleChildScrollView(
+                    child: const SingleChildScrollView(
                       child: Column(
                         children: [
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           _LessonRow(
                             title: 'Perspective Basics',
                             subtitle: 'How depth and distance are repr...',
                             duration: '23:28',
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           _LessonRow(
                             title: 'Mental Folding Exercises',
                             subtitle: 'Train your ability to imagine folde...',
                             duration: '15:48',
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           _LessonRow(
                             title: 'Spatial Logic in Design',
                             subtitle: 'Connecting geometry, structure...',
                             duration: '12:16',
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: 4),
                           _LessonRow(
                             title: 'Design Theory',
                             subtitle: 'Connecting geometry, structure...',
