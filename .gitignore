@@ -1,0 +1,60 @@
+# ==============================================================================
+# Secrets, Credentials & API Keys
+# ==============================================================================
+
+# Environment variable files
+.env
+.env.*
+*.env
+**/.env
+**/.env.*
+**/*.env
+!*.env.example
+!**/*.env.example
+
+# Firebase & Google Services configuration
+google-services.json
+**/google-services.json
+GoogleService-Info.plist
+**/GoogleService-Info.plist
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# Service accounts & Cloud credentials
+serviceAccountKey.json
+**/serviceAccountKey.json
+*credentials*.json
+**/*credentials*.json
+*-adminsdk-*.json
+**/*-adminsdk-*.json
+client_secret*.json
+**/client_secret*.json
+
+# Keystores, Signing keys & Certificates
+*.keystore
+**/*.keystore
+*.jks
+**/*.jks
+*.p12
+**/*.p12
+*.pem
+**/*.pem
+*.key
+**/*.key
+*.crt
+**/*.crt
+key.properties
+**/key.properties
+local.properties
+**/local.properties
+
+# Crash dumps & memory profiles (can leak in-memory secrets)
+*.hprof
+**/*.hprof
+
+# Built binaries & packages (prevent publishing bundled secrets)
+*.apk
+**/*.apk
+*.aab
+**/*.aab

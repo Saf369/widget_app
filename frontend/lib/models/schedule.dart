@@ -225,8 +225,14 @@ Future<void> updateGlobalTimetable(List<TimetableEntry> entries) async {
     if (_canUpdateHomeWidget) {
       try {
         await HomeWidget.saveWidgetData<String>('timetable_entries', jsonEncode(jsonList));
-        await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
-        await HomeWidget.updateWidget(name: 'TimetableGlanceWidgetReceiver');
+        await HomeWidget.updateWidget(
+          name: 'TimetableWidgetProvider',
+          qualifiedAndroidName: 'com.example.frontend.TimetableWidgetProvider',
+        );
+        await HomeWidget.updateWidget(
+          name: 'TimetableGlanceWidgetReceiver',
+          qualifiedAndroidName: 'com.example.frontend.TimetableGlanceWidgetReceiver',
+        );
       } catch (_) {}
     }
   } catch (e) {
@@ -253,8 +259,14 @@ Future<void> loadSavedTimetable() async {
       try {
         final jsonList = globalTimetable.map((e) => e.toJson()).toList();
         await HomeWidget.saveWidgetData<String>('timetable_entries', jsonEncode(jsonList));
-        await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
-        await HomeWidget.updateWidget(name: 'TimetableGlanceWidgetReceiver');
+        await HomeWidget.updateWidget(
+          name: 'TimetableWidgetProvider',
+          qualifiedAndroidName: 'com.example.frontend.TimetableWidgetProvider',
+        );
+        await HomeWidget.updateWidget(
+          name: 'TimetableGlanceWidgetReceiver',
+          qualifiedAndroidName: 'com.example.frontend.TimetableGlanceWidgetReceiver',
+        );
       } catch (_) {}
     }
   } catch (e) {

@@ -1,5 +1,8 @@
-# Environments
+# Environments & Secrets
 .env
+.env.*
+*.env
+!*.env.example
 .venv
 env/
 venv/
@@ -9,6 +12,10 @@ venv.bak/
 serviceAccountKey.json
 *credentials*.json
 *-adminsdk-*.json
+client_secret*.json
+*.key
+*.pem
+*.p12
 
 
 # Byte-compiled / optimized / DLL files

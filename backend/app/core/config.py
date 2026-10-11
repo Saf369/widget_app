@@ -10,6 +10,11 @@ class Settings(BaseSettings):
     ai_api_key: str = ""
     gemini_api_key: str = ""
     ai_model: str = "gemini-3.8-flash"
+    firebase_web_api_key: str = ""
+    firebase_android_api_key: str = ""
+    google_oauth_client_id: str = ""
+    google_oauth_client_secret: str = ""
+    google_oauth_android_client_id: str = ""
     max_upload_size_mb: int = 15
     allowed_origins: str = "*"
 

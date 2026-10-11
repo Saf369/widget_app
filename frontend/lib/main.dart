@@ -97,8 +97,14 @@ class AppShellState extends State<AppShell> {
       if (currentTab == null) {
         await HomeWidget.saveWidgetData<String>('active_tab', 'day');
       }
-      await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
-      await HomeWidget.updateWidget(name: 'TimetableGlanceWidgetReceiver');
+      await HomeWidget.updateWidget(
+        name: 'TimetableWidgetProvider',
+        qualifiedAndroidName: 'com.example.frontend.TimetableWidgetProvider',
+      );
+      await HomeWidget.updateWidget(
+        name: 'TimetableGlanceWidgetReceiver',
+        qualifiedAndroidName: 'com.example.frontend.TimetableGlanceWidgetReceiver',
+      );
     } catch (e) {
       debugPrint('Error updating widget: $e');
     }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -113,23 +114,46 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/analyze-timetable/');
     final request = http.MultipartRequest('POST', uri);
 
-    if (file.bytes != null) {
+    Uint8List? rawBytes = file.bytes;
+    if ((rawBytes == null || rawBytes.isEmpty) && file.path != null && !kIsWeb) {
+      try {
+        final f = io.File(file.path!);
+        if (await f.exists()) {
+          rawBytes = await f.readAsBytes();
+        }
+      } catch (e) {
+        debugPrint('Could not read bytes from file path: $e');
+      }
+    }
+
+    String filename = file.name;
+    if (!filename.contains('.')) {
+      final ext = file.extension ?? 'png';
+      filename = '$filename.$ext';
+    }
+
+    if (rawBytes != null && rawBytes.isNotEmpty) {
+      debugPrint('Uploading ${rawBytes.length} bytes for $filename');
       request.files.add(http.MultipartFile.fromBytes(
         'file',
-        file.bytes!,
-        filename: file.name,
+        rawBytes,
+        filename: filename,
       ));
-    } else if (file.path != null) {
+    } else if (file.path != null && !kIsWeb) {
+      debugPrint('Uploading from path ${file.path!} for $filename');
       request.files.add(await http.MultipartFile.fromPath(
         'file',
         file.path!,
+        filename: filename,
       ));
     } else {
       throw Exception('Selected file has no readable data or path.');
     }
 
+    debugPrint('Sending POST request to $uri...');
     final streamedResponse = await request.send().timeout(const Duration(seconds: 90));
     final response = await http.Response.fromStream(streamedResponse);
+    debugPrint('Server responded with HTTP ${response.statusCode}');
 
     if (response.statusCode == 200) {
       final decoded = jsonDecode(response.body) as Map<String, dynamic>;

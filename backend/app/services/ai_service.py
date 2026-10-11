@@ -40,9 +40,22 @@ PASTEL_COLORS = [
     "0xFFB5E2FA",  # Soft Blue
 ]
 
-def detect_mime_type(filename: str, content_type: Optional[str] = None) -> str:
-    ext = os.path.splitext(filename.lower())[1]
-    
+import asyncio
+
+def detect_mime_type(filename: str, content_type: Optional[str] = None, file_bytes: Optional[bytes] = None) -> str:
+    # 1. Magic bytes detection (handles Android content URIs or stripped extensions)
+    if file_bytes:
+        if file_bytes.startswith(b"%PDF"):
+            return "application/pdf"
+        elif file_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+            return "image/png"
+        elif file_bytes.startswith(b"\xff\xd8\xff"):
+            return "image/jpeg"
+        elif len(file_bytes) >= 12 and file_bytes[:4] == b"RIFF" and file_bytes[8:12] == b"WEBP":
+            return "image/webp"
+
+    # 2. File extension detection
+    ext = os.path.splitext(filename.lower())[1] if filename else ""
     if ext == ".pdf":
         return "application/pdf"
     elif ext in [".png"]:
@@ -51,14 +64,15 @@ def detect_mime_type(filename: str, content_type: Optional[str] = None) -> str:
         return "image/jpeg"
     elif ext in [".webp"]:
         return "image/webp"
-    
+
+    # 3. Content type header fallback
     if content_type and (content_type.startswith("image/") or content_type == "application/pdf"):
         return content_type
-        
-    raise ValueError(f"Unsupported file format: {ext or filename}. Please upload a PDF or PNG/JPG image.")
+
+    raise ValueError(f"Unsupported file format: {ext or filename}. Please upload a PDF or PNG/JPG/WEBP image.")
 
 async def extract_timetable(file_bytes: bytes, filename: str, content_type: Optional[str] = None) -> TimetableAnalysisResponse:
-    mime_type = detect_mime_type(filename, content_type)
+    mime_type = detect_mime_type(filename, content_type, file_bytes=file_bytes)
     api_key = settings.get_gemini_api_key()
     
     if not api_key:
@@ -87,8 +101,10 @@ async def extract_timetable(file_bytes: bytes, filename: str, content_type: Opti
         "4. Be thorough and make sure no classes are missed across all days of the week."
     )
 
-    models_to_try = [settings.ai_model]
-    for candidate in ["gemini-3.7-flash", "gemini-3.5-flash"]:
+    # Model priority: User-requested model (gemini-3.8-flash) first, with gemini-2.5-flash fallback if 503 high demand occurs
+    preferred = settings.ai_model or "gemini-3.8-flash"
+    models_to_try = [preferred]
+    for candidate in ["gemini-3.8-flash", "gemini-2.5-flash"]:
         if candidate not in models_to_try:
             models_to_try.append(candidate)
 
@@ -97,19 +113,24 @@ async def extract_timetable(file_bytes: bytes, filename: str, content_type: Opti
     for model_name in models_to_try:
         try:
             logger.info(f"Extracting timetable using model: {model_name}")
-            response = client.models.generate_content(
-                model=model_name,
-                contents=[file_part, prompt],
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=TimetableAnalysisResponse,
-                    temperature=0.1,
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    client.models.generate_content,
+                    model=model_name,
+                    contents=[file_part, prompt],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=TimetableAnalysisResponse,
+                        temperature=0.1,
+                    ),
                 ),
+                timeout=45.0
             )
             if response and response.text:
+                logger.info(f"Successfully extracted timetable with model {model_name}")
                 break
         except Exception as e:
-            logger.warning(f"Model {model_name} encountered error: {e}")
+            logger.warning(f"Model {model_name} encountered error or timeout: {e}")
             last_error = e
 
     if not response or not response.text:

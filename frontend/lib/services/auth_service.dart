@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
+import 'api_service.dart';
+
 class AuthService {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
@@ -11,14 +13,17 @@ class AuthService {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    serverClientId: '738100973270-gkp6m8eftlvvr9nc565nk5upn6ivpv9b.apps.googleusercontent.com',
+    serverClientId: const String.fromEnvironment(
+      'GOOGLE_SERVER_CLIENT_ID',
+      defaultValue: '1097064119989-d11rujlfjo7bo5o0sn6vkv61t3a3sl6g.apps.googleusercontent.com',
+    ),
   );
 
   User? get currentUser => _auth.currentUser;
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   /// Sign in with Google
-  Future<UserCredential?> signInWithGoogle({String backendBaseUrl = 'http://10.0.2.2:8000'}) async {
+  Future<UserCredential?> signInWithGoogle({String? backendBaseUrl}) async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
@@ -38,9 +43,10 @@ class AuthService {
       if (user != null) {
         // Sync profile to backend / Firestore
         try {
+          final targetUrl = backendBaseUrl ?? (await ApiService.findReachableUrl()) ?? 'http://127.0.0.1:8000';
           final idToken = await user.getIdToken();
           await http.post(
-            Uri.parse('$backendBaseUrl/api/auth/sync-user'),
+            Uri.parse('$targetUrl/api/auth/sync-user'),
             headers: {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $idToken',

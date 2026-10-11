@@ -147,6 +147,7 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
         }
       }
     } catch (e) {
+      debugPrint('Timetable upload error: $e');
       if (mounted) {
         showDialog(
           context: context,
