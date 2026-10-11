@@ -1,10 +1,29 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatelessWidget {
   final VoidCallback onLogin;
   const LoginScreen({super.key, required this.onLogin});
+
+  Future<void> _handleGoogleSignIn(BuildContext context) async {
+    try {
+      final cred = await AuthService().signInWithGoogle();
+      if (cred != null) {
+        onLogin();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In: $e'),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -219,11 +238,17 @@ class LoginScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 24),
                         // Social Logins
-                        const Row(
+                        Row(
                           children: [
-                            Expanded(child: _SocialButton(initial: 'G', label: 'Google')),
-                            SizedBox(width: 12),
-                            Expanded(child: _SocialButton(initial: 'C', label: 'Campus SSO')),
+                            Expanded(
+                              child: _SocialButton(
+                                initial: 'G',
+                                label: 'Google',
+                                onTap: () => _handleGoogleSignIn(context),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(child: _SocialButton(initial: 'C', label: 'Campus SSO')),
                           ],
                         ),
                         const SizedBox(height: 40),
@@ -384,18 +409,22 @@ class _InputField extends StatelessWidget {
 class _SocialButton extends StatelessWidget {
   final String initial;
   final String label;
+  final VoidCallback? onTap;
 
-  const _SocialButton({required this.initial, required this.label});
+  const _SocialButton({required this.initial, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(27),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          height: 54,
-          padding: const EdgeInsets.symmetric(horizontal: 12), // Reduced padding slightly
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(27),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            height: 54,
+            padding: const EdgeInsets.symmetric(horizontal: 12), // Reduced padding slightly
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.65),
             borderRadius: BorderRadius.circular(27),
@@ -440,6 +469,7 @@ class _SocialButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

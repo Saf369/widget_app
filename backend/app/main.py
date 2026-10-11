@@ -5,7 +5,7 @@ from app.core.config import settings
 from app.core.firebase import init_firebase
 from contextlib import asynccontextmanager
 
-from app.api.endpoints import upload
+from app.api.endpoints import upload, timetable
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("app.main")
@@ -36,3 +36,4 @@ def health_check():
     return {"status": "ok", "environment": settings.app_env}
 
 app.include_router(upload.router)
+app.include_router(timetable.router)
