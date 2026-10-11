@@ -31,11 +31,14 @@ void main() async {
   await loadSavedTimetable();
   
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    final options = DefaultFirebaseOptions.currentPlatform;
+    if (options != null) {
+      await Firebase.initializeApp(options: options);
+    } else {
+      await Firebase.initializeApp();
+    }
   } catch (e) {
-    debugPrint('Firebase initialization failed (probably not configured for this platform yet): \$e');
+    debugPrint('Firebase initialization failed: $e');
   }
 
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);

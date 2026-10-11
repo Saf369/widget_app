@@ -86,15 +86,15 @@ task generateGoogleServicesJson {
                 }
             }
 
-            def projectNumber = envProps['FIREBASE_PROJECT_NUMBER'] ?: System.getenv('FIREBASE_PROJECT_NUMBER') ?: '1097064119989'
-            def projectId = envProps['FIREBASE_PROJECT_ID'] ?: System.getenv('FIREBASE_PROJECT_ID') ?: 'widgetapp-fd182'
-            def storageBucket = envProps['FIREBASE_STORAGE_BUCKET'] ?: System.getenv('FIREBASE_STORAGE_BUCKET') ?: 'widgetapp-fd182.firebasestorage.app'
-            def appId = envProps['FIREBASE_APP_ID'] ?: System.getenv('FIREBASE_APP_ID') ?: '1:1097064119989:android:93fe54b08518fe380148fc'
+            def projectNumber = envProps['FIREBASE_PROJECT_NUMBER'] ?: System.getenv('FIREBASE_PROJECT_NUMBER') ?: '505052765177'
+            def projectId = envProps['FIREBASE_PROJECT_ID'] ?: System.getenv('FIREBASE_PROJECT_ID') ?: 'widgetapp-b8efb'
+            def storageBucket = envProps['FIREBASE_STORAGE_BUCKET'] ?: System.getenv('FIREBASE_STORAGE_BUCKET') ?: 'widgetapp-b8efb.firebasestorage.app'
+            def appId = envProps['FIREBASE_APP_ID'] ?: System.getenv('FIREBASE_APP_ID') ?: '1:505052765177:android:03791b1ae8484d881e3b28'
             def pkgName = envProps['ANDROID_PACKAGE_NAME'] ?: System.getenv('ANDROID_PACKAGE_NAME') ?: 'com.saf369.customsyllabus'
-            def apiKey = envProps['FIREBASE_ANDROID_API_KEY'] ?: System.getenv('FIREBASE_ANDROID_API_KEY') ?: 'AIzaSyA3g68KLg_G77d-KMBbkMCS0yd9LJWifh8'
-            def webClientId = envProps['GOOGLE_WEB_CLIENT_ID'] ?: envProps['GOOGLE_OAUTH_CLIENT_ID'] ?: '1097064119989-d11rujlfjo7bo5o0sn6vkv61t3a3sl6g.apps.googleusercontent.com'
-            def androidClientId = envProps['GOOGLE_ANDROID_CLIENT_ID'] ?: envProps['GOOGLE_OAUTH_ANDROID_CLIENT_ID'] ?: '1097064119989-03m7hek060jba1pf4dbgt4lekg2haan6.apps.googleusercontent.com'
-            def certHash = envProps['GOOGLE_CERTIFICATE_HASH'] ?: '4a3485b96dc05ea5b2b75954dde0d475125868f9'
+            def apiKey = envProps['FIREBASE_ANDROID_API_KEY'] ?: envProps['FIREBASE_API_KEY'] ?: System.getenv('FIREBASE_ANDROID_API_KEY') ?: System.getenv('FIREBASE_API_KEY') ?: ''
+            def webClientId = envProps['GOOGLE_WEB_CLIENT_ID'] ?: envProps['GOOGLE_OAUTH_CLIENT_ID'] ?: '505052765177-jgrkglr7gl2iag31r7l62n3mukc255ct.apps.googleusercontent.com'
+            def androidClientId = envProps['GOOGLE_ANDROID_CLIENT_ID'] ?: envProps['GOOGLE_OAUTH_ANDROID_CLIENT_ID'] ?: '505052765177-roop5orhsemohk50qd2ngoe05tlla877.apps.googleusercontent.com'
+            def certHash = envProps['GOOGLE_CERTIFICATE_HASH'] ?: '744a819579c27933c0c141e7c07708a5f98b491a'
 
             def json = [
                 project_info: [

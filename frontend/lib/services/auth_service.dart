@@ -15,7 +15,7 @@ class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     serverClientId: const String.fromEnvironment(
       'GOOGLE_SERVER_CLIENT_ID',
-      defaultValue: '1097064119989-d11rujlfjo7bo5o0sn6vkv61t3a3sl6g.apps.googleusercontent.com',
+      defaultValue: '505052765177-jgrkglr7gl2iag31r7l62n3mukc255ct.apps.googleusercontent.com',
     ),
   );
 

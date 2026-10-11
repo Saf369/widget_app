@@ -15,12 +15,20 @@ import 'package:flutter/foundation.dart'
 /// );
 /// ```
 class DefaultFirebaseOptions {
-  static FirebaseOptions get currentPlatform {
+  static FirebaseOptions? get currentPlatform {
     if (kIsWeb) {
       return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
+        const key = String.fromEnvironment(
+          'FIREBASE_ANDROID_API_KEY',
+          defaultValue: String.fromEnvironment('FIREBASE_API_KEY'),
+        );
+        if (key.isEmpty) {
+          // No dart-define key provided: return null to let Firebase use native google-services.json
+          return null;
+        }
         return android;
       case TargetPlatform.iOS:
         throw UnsupportedError(
@@ -50,20 +58,27 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyA3g68KLg_G77d-KMBbkMCS0yd9LJWifh8',
-    appId: '1:1097064119989:android:93fe54b08518fe380148fc',
-    messagingSenderId: '1097064119989',
-    projectId: 'widgetapp-fd182',
-    storageBucket: 'widgetapp-fd182.firebasestorage.app',
+    apiKey: String.fromEnvironment(
+      'FIREBASE_ANDROID_API_KEY',
+      defaultValue: String.fromEnvironment('FIREBASE_API_KEY'),
+    ),
+    appId: '1:505052765177:android:03791b1ae8484d881e3b28',
+    messagingSenderId: '505052765177',
+    projectId: 'widgetapp-b8efb',
+    storageBucket: 'widgetapp-b8efb.firebasestorage.app',
   );
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDUFz86mDXlklRP_MNBQEf40SdvviD6qvc',
-    appId: '1:1097064119989:web:dee6b30174da968f0148fc',
-    messagingSenderId: '1097064119989',
-    projectId: 'widgetapp-fd182',
-    authDomain: 'widgetapp-fd182.firebaseapp.com',
-    storageBucket: 'widgetapp-fd182.firebasestorage.app',
+    apiKey: String.fromEnvironment(
+      'FIREBASE_WEB_API_KEY',
+      defaultValue: String.fromEnvironment('FIREBASE_API_KEY'),
+    ),
+    appId: '1:505052765177:web:8929fde53a4624ab1e3b28',
+    messagingSenderId: '505052765177',
+    projectId: 'widgetapp-b8efb',
+    authDomain: 'widgetapp-b8efb.firebaseapp.com',
+    storageBucket: 'widgetapp-b8efb.firebasestorage.app',
+    measurementId: 'G-JFJL40R8J4',
   );
 
 }
