@@ -310,36 +310,19 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
                               child: const Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: Color(0xFF141414)),
                             ),
                           ),
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: _showServerSettingsDialog,
-                                child: Container(
-                                  width: 44,
-                                  height: 44,
-                                  margin: const EdgeInsets.only(right: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.6),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.dns_rounded, size: 20, color: Color(0xFF141414)),
-                                ),
+                          GestureDetector(
+                            onTap: widget.onSkip,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.6),
+                                borderRadius: BorderRadius.circular(24),
                               ),
-                              GestureDetector(
-                                onTap: widget.onSkip,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.6),
-                                    borderRadius: BorderRadius.circular(24),
-                                  ),
-                                  child: Text(
-                                    'Skip',
-                                    style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF141414)),
-                                  ),
-                                ),
+                              child: Text(
+                                'Skip',
+                                style: GoogleFonts.urbanist(fontSize: 16, fontWeight: FontWeight.w500, color: const Color(0xFF141414)),
                               ),
-                            ],
+                            ),
                           ),
                         ],
                       ),

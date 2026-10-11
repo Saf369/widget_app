@@ -111,7 +111,7 @@ class AppShellState extends State<AppShell> {
     });
   }
 
-  final List<Widget> _screens = const [
+  List<Widget> get _screens => const [
     HomeScreen(),
     ScheduleScreen(),
     LectureScreen(),

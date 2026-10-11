@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/schedule.dart';
 import 'upload_timetable_screen.dart';
+import 'schedule_screen.dart';
 
 // ── Models & Helpers ──────────────────────────────────────────────────────
 
@@ -542,10 +543,23 @@ class _HomeScreenState extends State<HomeScreen> {
           _QuickActionBtn(
             icon: Icons.add_rounded, 
             label: 'Add Class', 
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Use the Calendar tab to manage classes.')),
+            onTap: () async {
+              final addedDate = await showModalBottomSheet<DateTime>(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => Padding(
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + 40,
+                  ),
+                  child: NewScheduleSheet(initialDate: _selectedDate),
+                ),
               );
+              if (addedDate != null && mounted) {
+                setState(() {
+                  _selectedDate = DateTime(addedDate.year, addedDate.month, addedDate.day);
+                });
+              }
             }
           ),
           _QuickActionBtn(

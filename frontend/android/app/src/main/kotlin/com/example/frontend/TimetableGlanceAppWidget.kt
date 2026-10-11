@@ -173,6 +173,79 @@ private fun getCardDrawable(colorCode: String, subject: String): Int {
     }
 }
 
+private fun getChipDrawable(
+    colorCode: String,
+    subject: String,
+    isTop: Boolean = false,
+    isBottom: Boolean = false
+): Int {
+    val s = subject.uppercase()
+    val c = colorCode.uppercase()
+    return when {
+        c.contains("B5E2FA") || c.contains("BLUE") || s.contains("LOTE") || s.contains("LANG") || s.contains("FRENCH") || s.contains("SPANISH") -> {
+            R.drawable.chip_blue_bg
+        }
+        c.contains("DBD3EE") || c.contains("C4B9DC") || s.contains("DESIGN") || s.contains("ENGLISH") || s.contains("MUSIC") -> {
+            R.drawable.chip_purple_bg
+        }
+        c.contains("CDE6E2") || c.contains("BDE4C9") || s.contains("SCIENCE") || s.contains("PDHPE") || s.contains("STUDIO") -> {
+            if (isTop) R.drawable.chip_mint_top_bg else if (isBottom) R.drawable.chip_mint_bottom_bg else R.drawable.chip_mint_bg
+        }
+        c.contains("EFCCB8") || c.contains("E9CCAA") || s.contains("HISTORY") || s.contains("ART") || s.contains("LAB") -> {
+            if (isTop) R.drawable.chip_peach_top_bg else if (isBottom) R.drawable.chip_peach_bottom_bg else R.drawable.chip_peach_bg
+        }
+        else -> R.drawable.chip_pink_bg
+    }
+}
+
+private fun getChipFillColor(colorCode: String, subject: String): Color {
+    val s = subject.uppercase()
+    val c = colorCode.uppercase()
+    return when {
+        c.contains("B5E2FA") || c.contains("BLUE") || s.contains("LOTE") || s.contains("LANG") || s.contains("FRENCH") || s.contains("SPANISH") -> Color(0xFFB8DCED)
+        c.contains("DBD3EE") || c.contains("C4B9DC") || s.contains("DESIGN") || s.contains("ENGLISH") || s.contains("MUSIC") -> Color(0xFFD3CCE8)
+        c.contains("CDE6E2") || c.contains("BDE4C9") || s.contains("SCIENCE") || s.contains("PDHPE") || s.contains("STUDIO") -> Color(0xFFBBE0CE)
+        c.contains("EFCCB8") || c.contains("E9CCAA") || s.contains("HISTORY") || s.contains("ART") || s.contains("LAB") -> Color(0xFFEED0A4)
+        else -> Color(0xFFE4C4CB)
+    }
+}
+
+private fun shortSubjectName(subject: String): String {
+    val clean = subject.trim()
+    val upper = clean.uppercase()
+    return when {
+        upper.contains("MATH") -> "Math"
+        upper.contains("ENG") -> "Eng"
+        upper.contains("SCI") -> "Sci"
+        upper.contains("BIO") -> "Bio"
+        upper.contains("CHEM") -> "Chem"
+        upper.contains("PHYS") -> "Phys"
+        upper.contains("HIST") -> "Hist"
+        upper.contains("GEO") -> "Geo"
+        upper.contains("ART") -> "Art"
+        upper.contains("DRAMA") || upper.contains("THEAT") -> "Drama"
+        upper.contains("MUSIC") -> "Music"
+        upper.contains("LOTE") || upper.contains("LANG") || upper.contains("FRENCH") || upper.contains("SPANISH") || upper.contains("GERMAN") || upper.contains("CHINESE") || upper.contains("JAPAN") -> "Lang"
+        upper.contains("CODE") || upper.contains("PROG") || upper.contains("CS") || upper.contains("IT") || upper.contains("COMP") -> "Code"
+        upper.contains("THEOR") -> "Theory"
+        upper.contains("STUDIO") -> "Studio"
+        upper.contains("DESIGN") -> "Design"
+        upper.contains("LAB") -> "Lab"
+        upper.contains("PE") || upper.contains("PDHPE") || upper.contains("SPORT") || upper.contains("GYM") -> "Gym"
+        upper.contains("ECON") -> "Econ"
+        upper.contains("PSYCH") -> "Psych"
+        upper.contains("SOC") -> "Soci"
+        upper.contains("PHIL") -> "Phil"
+        upper.contains("BUS") || upper.contains("BIZ") -> "Biz"
+        clean.length in 1..5 -> clean.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+        else -> {
+            val firstWord = clean.split(" ", "-", "_").firstOrNull().orEmpty()
+            if (firstWord.length in 1..5) firstWord.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            else firstWord.take(4).replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+        }
+    }
+}
+
 class TimetableGlanceAppWidget : GlanceAppWidget() {
 
     override val stateDefinition = HomeWidgetGlanceStateDefinition()
@@ -241,7 +314,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                     when (activeTab) {
                         "hour" -> HourView(context = context, hourOffset = hourOffset, entries = entries, currentMinutes = currentMinutes, todayKey = todayKey)
                         "day" -> DayView(context = context, entries = entries, currentMinutes = currentMinutes, todayKey = todayKey)
-                        "week" -> WeekView(context = context, weekCalStart = weekCalStart, todayCal = calendar)
+                        "week" -> WeekView(context = context, weekCalStart = weekCalStart, todayCal = calendar, entries = entries)
                         "month" -> MonthView(context = context, entries = entries, todayKey = todayKey, todayCal = calendar)
                         else -> DayView(context = context, entries = entries, currentMinutes = currentMinutes, todayKey = todayKey)
                     }
@@ -1247,6 +1320,136 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
     private fun WeekView(
         context: Context,
         weekCalStart: Calendar,
+        todayCal: Calendar,
+        entries: List<GlanceTimetableEntry>
+    ) {
+        if (entries.isEmpty()) {
+            DefaultWeekView(context, weekCalStart, todayCal)
+            return
+        }
+
+        val dayKeys = listOf("MON", "TUE", "WED", "THUR", "FRI", "SAT", "SUN")
+
+        // Find distinct start hours from actual timetable entries
+        val classHours = entries.mapNotNull {
+            val m = parseTimeToMinutes(it.startTime)
+            if (m >= 0) m / 60 else null
+        }.distinct().sorted()
+
+        val rowHours = when {
+            classHours.isEmpty() -> listOf(9, 10, 11, 12, 13)
+            classHours.size <= 5 -> {
+                val minH = classHours.first()
+                val maxH = classHours.last()
+                if (maxH - minH + 1 <= 5) {
+                    (0 until 5).map { minH + it }
+                } else {
+                    classHours
+                }
+            }
+            classHours.size == 6 -> {
+                // E.g. 8, 9, 10, 11, 13, 14 - all 6 periods of the day!
+                classHours
+            }
+            else -> {
+                // More than 6 hours: pick a 6-row window around current time
+                val currentH = todayCal.get(Calendar.HOUR_OF_DAY)
+                val activeIdx = classHours.indexOfFirst { it >= currentH - 1 }
+                val startIdx = (if (activeIdx >= 0) activeIdx else 0).coerceAtMost(classHours.size - 6)
+                classHours.drop(startIdx).take(6)
+            }
+        }
+
+        Column(
+            modifier = GlanceModifier.fillMaxSize()
+        ) {
+            // Days Row dynamically calculated for the current week
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Vertical.CenterVertically
+            ) {
+                // Aligns exactly with the 26.dp time column below
+                Spacer(modifier = GlanceModifier.width(26.dp))
+
+                val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+                for (i in 0 until 7) {
+                    val c = (weekCalStart.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, i) }
+                    val isToday = c.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                            c.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR)
+                    DayColumnHeader(
+                        day = dayNames[i],
+                        date = c.get(Calendar.DAY_OF_MONTH).toString(),
+                        isToday = isToday
+                    )
+                }
+            }
+
+            Spacer(modifier = GlanceModifier.height(10.dp))
+
+            // Schedule Grid
+            Column(
+                modifier = GlanceModifier.fillMaxWidth().defaultWeight()
+            ) {
+                for (rIndex in rowHours.indices) {
+                    val h = rowHours[rIndex]
+                    val timeLabel = when {
+                        h == 0 || h == 24 -> "12a"
+                        h == 12 -> "12p"
+                        h > 12 -> "${h - 12}p"
+                        else -> "${h}a"
+                    }
+
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
+                        verticalAlignment = Alignment.Vertical.CenterVertically
+                    ) {
+                        Text(
+                            text = timeLabel,
+                            style = TextStyle(
+                                color = color(Color(0xFF726E6A)),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            modifier = GlanceModifier.width(26.dp)
+                        )
+
+                        for (dIndex in 0 until 7) {
+                            val dayKey = dayKeys[dIndex]
+                            val dayEntries = entries.filter { it.day == dayKey }
+
+                            // Find class starting in this hour slot
+                            val entry = dayEntries.firstOrNull { e ->
+                                val sMin = parseTimeToMinutes(e.startTime)
+                                if (sMin >= 0) sMin / 60 == h else false
+                            }
+
+                            GridCell {
+                                if (entry != null) {
+                                    val bgDrawable = getChipDrawable(
+                                        colorCode = entry.colorCode,
+                                        subject = entry.subject,
+                                        isTop = false,
+                                        isBottom = false
+                                    )
+                                    val label = shortSubjectName(entry.subject)
+                                    GridBlock(label = label, bgRes = bgDrawable, context = context)
+                                }
+                            }
+                        }
+                    }
+
+                    if (rIndex < rowHours.size - 1) {
+                        WeekDividerLine()
+                    }
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun DefaultWeekView(
+        context: Context,
+        weekCalStart: Calendar,
         todayCal: Calendar
     ) {
         Column(
@@ -1273,7 +1476,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(14.dp))
+            Spacer(modifier = GlanceModifier.height(10.dp))
 
             // Schedule Grid: 5 time rows (9a, 10a, 11a, 12p, 1p) filling the vertical height evenly
             Column(
@@ -1282,16 +1485,15 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 // 9a row
                 WeekGridRow(
                     time = "9a",
-                    monContent = { GridBlock("Studio", R.drawable.chip_mint_top_bg, context) },
+                    monContent = { GridBlock("Studio", R.drawable.chip_mint_bg, context) },
                     thuContent = { GridBlock("Crit", R.drawable.chip_mint_bg, context) }
                 )
 
-                WeekDividerLine(skipColumnIndex = 0, skipFillColor = Color(0xFFBBE0CE)) // Mon continues into 10a
+                WeekDividerLine()
 
                 // 10a row
                 WeekGridRow(
                     time = "10a",
-                    monContent = { GridBlock("", R.drawable.chip_mint_bottom_bg, context) },
                     tueContent = { GridBlock("Theory", R.drawable.chip_pink_bg, context) },
                     friContent = { GridBlock("Theory", R.drawable.chip_pink_bg, context) }
                 )
@@ -1301,15 +1503,15 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 // 11a row
                 WeekGridRow(
                     time = "11a",
-                    wedContent = { GridBlock("Lab", R.drawable.chip_peach_top_bg, context) }
+                    wedContent = { GridBlock("Lab", R.drawable.chip_peach_bg, context) }
                 )
 
-                WeekDividerLine(skipColumnIndex = 2, skipFillColor = Color(0xFFEED0A4)) // Wed continues into 12p
+                WeekDividerLine()
 
                 // 12p row
                 WeekGridRow(
                     time = "12p",
-                    wedContent = { GridBlock("", R.drawable.chip_peach_bottom_bg, context) }
+                    wedContent = { GridBlock("Study", R.drawable.chip_peach_bg, context) }
                 )
 
                 WeekDividerLine()
@@ -1338,7 +1540,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 modifier = GlanceModifier
                     .width(26.dp)
                     .height(1.dp)
-                    .background(Color(0x1F000000))
+                    .background(Color(0x14000000))
             ) {}
 
             // 7 Day column lines
@@ -1358,7 +1560,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                         modifier = GlanceModifier
                             .defaultWeight()
                             .height(1.dp)
-                            .background(Color(0x1F000000))
+                            .background(Color(0x14000000))
                     ) {}
                 }
             }
@@ -1375,7 +1577,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 Box(
                     modifier = GlanceModifier
                         .background(ImageProvider(R.drawable.day_header_active_bg))
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
+                        .padding(horizontal = 6.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.Horizontal.CenterHorizontally) {
@@ -1383,7 +1585,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                             text = day,
                             style = TextStyle(
                                 color = color(Color.White),
-                                fontSize = 10.sp,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.Normal
                             )
                         )
@@ -1392,7 +1594,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                             text = date,
                             style = TextStyle(
                                 color = color(Color.White),
-                                fontSize = 13.sp,
+                                fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
                             )
                         )
@@ -1404,7 +1606,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                         text = day,
                         style = TextStyle(
                             color = color(Color(0xFF726E6A)),
-                            fontSize = 10.sp,
+                            fontSize = 9.sp,
                             fontWeight = FontWeight.Normal
                         )
                     )
@@ -1413,7 +1615,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                         text = date,
                         style = TextStyle(
                             color = color(Color(0xFF181818)),
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
                     )
@@ -1460,9 +1662,12 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
     }
 
     @Composable
-    private fun RowScope.GridCell(content: (@Composable () -> Unit)?) {
+    private fun RowScope.GridCell(content: (@Composable () -> Unit)? = null) {
         Box(
-            modifier = GlanceModifier.defaultWeight().fillMaxHeight().padding(horizontal = 2.dp),
+            modifier = GlanceModifier
+                .defaultWeight()
+                .fillMaxHeight()
+                .padding(horizontal = 2.dp, vertical = 1.dp),
             contentAlignment = Alignment.Center
         ) {
             content?.invoke()
@@ -1474,14 +1679,13 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
         label: String,
         bgRes: Int,
         context: Context,
-        alignment: Alignment = Alignment.TopStart
+        alignment: Alignment = Alignment.Center
     ) {
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(ImageProvider(bgRes))
-                .clickable(launchAppIntent(context))
-                .padding(start = 5.dp, top = 5.dp),
+                .clickable(launchAppIntent(context)),
             contentAlignment = alignment
         ) {
             if (label.isNotEmpty()) {
@@ -1489,9 +1693,10 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                     text = label,
                     style = TextStyle(
                         color = color(Color(0xFF181818)),
-                        fontSize = 10.sp,
+                        fontSize = 9.5.sp,
                         fontWeight = FontWeight.Bold
-                    )
+                    ),
+                    maxLines = 1
                 )
             }
         }

@@ -1,11 +1,48 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'upload_timetable_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _notificationsEnabled = false;
+  bool _studyRemindersEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _notificationsEnabled = prefs.getBool('settings_notifications') ?? false;
+        _studyRemindersEnabled = prefs.getBool('settings_study_reminders') ?? false;
+      });
+    }
+  }
+
+  Future<void> _setNotifications(bool value) async {
+    setState(() => _notificationsEnabled = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('settings_notifications', value);
+  }
+
+  Future<void> _setStudyReminders(bool value) async {
+    setState(() => _studyRemindersEnabled = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('settings_study_reminders', value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,45 +143,50 @@ class SettingsScreen extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
                     child: _SettingsGroup(items: [
-                      const _SettingsItem(
-                        iconBg: Color(0xFFE8CACF),
-                        icon: Icons.notifications_outlined,
-                        label: 'Notifications',
-                        trailing: _ToggleOn(),
-                      ),
-                      const _SettingsItem(
-                        iconBg: Color(0xFFCDE6E2),
-                        icon: Icons.alarm_rounded,
-                        label: 'Study reminders',
-                        trailing: _ToggleOn(),
+                      Opacity(
+                        opacity: 0.6,
+                        child: const _SettingsItem(
+                          iconBg: Color(0xFFE8CACF),
+                          icon: Icons.notifications_outlined,
+                          label: 'Notifications',
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _ComingSoonBadge(),
+                              SizedBox(width: 12),
+                              _ToggleOff(),
+                            ],
+                          ),
+                        ),
                       ),
                       Opacity(
                         opacity: 0.6,
-                        child: _SettingsItem(
-                          iconBg: const Color(0xFFD6CBE6),
+                        child: const _SettingsItem(
+                          iconBg: Color(0xFFCDE6E2),
+                          icon: Icons.alarm_rounded,
+                          label: 'Study reminders',
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _ComingSoonBadge(),
+                              SizedBox(width: 12),
+                              _ToggleOff(),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Opacity(
+                        opacity: 0.6,
+                        child: const _SettingsItem(
+                          iconBg: Color(0xFFD6CBE6),
                           icon: Icons.smart_toy_outlined,
                           label: 'AI Tutor',
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF111315).withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'COMING SOON',
-                                  style: GoogleFonts.urbanist(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0.5,
-                                    color: const Color(0xFF5A5A60),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const _ToggleOff(),
+                              _ComingSoonBadge(),
+                              SizedBox(width: 12),
+                              _ToggleOff(),
                             ],
                           ),
                         ),
@@ -492,6 +534,72 @@ class _SettingsItem extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _ToggleSwitch extends StatelessWidget {
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  const _ToggleSwitch({
+    required this.value,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onChanged != null ? () => onChanged!(!value) : null,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
+        width: 48,
+        height: 28,
+        decoration: BoxDecoration(
+          color: value ? const Color(0xFF0E0E10) : const Color(0xFFCFC9DA),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 22,
+            height: 22,
+            margin: const EdgeInsets.all(3),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComingSoonBadge extends StatelessWidget {
+  const _ComingSoonBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF111315).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        'COMING SOON',
+        style: GoogleFonts.urbanist(
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.5,
+          color: const Color(0xFF5A5A60),
+        ),
+      ),
     );
   }
 }

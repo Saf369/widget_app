@@ -125,7 +125,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   List<TimetableEntry> _getEntriesForDate(DateTime date) {
     String shortName = _getShortDayName(date.weekday);
-    return globalTimetable.where((e) => TimetableEntry.normalizeDay(e.day) == shortName).toList();
+    final entries = globalTimetable
+        .where((e) => TimetableEntry.normalizeDay(e.day) == shortName)
+        .toList();
+    entries.sort((a, b) => a.startDateTime(date).compareTo(b.startDateTime(date)));
+    return entries;
   }
 
   @override
@@ -170,19 +174,39 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final entry = todaysEntries[index];
-                      // split "10:30" into "10:30" and "" or just use the start time directly
-                      String timeLabel = entry.startTime.replaceAll(RegExp(r'[a-zA-Z\s]'), '');
-                      String suffix = entry.startTime.toUpperCase().contains('PM') ? 'PM' : 'AM';
+                      // Parse start time into 2-digit hour and 2-digit minute
+                      final rawTime = entry.startTime.trim().toUpperCase();
+                      final isPm = rawTime.contains('PM');
+                      final isAm = rawTime.contains('AM');
+                      final digitsOnly = rawTime.replaceAll(RegExp(r'[^0-9:]'), '');
+                      final timeParts = digitsOnly.split(':');
                       
-                      // If no AM/PM, try to guess
-                      if (!entry.startTime.toUpperCase().contains('AM') && !entry.startTime.toUpperCase().contains('PM')) {
-                         int hour = int.tryParse(timeLabel.split(':').first) ?? 0;
-                         if (hour >= 1 && hour <= 6) {
-                           suffix = 'PM'; // roughly afternoon
-                         } else {
-                           suffix = 'AM';
-                         }
+                      int hour = int.tryParse(timeParts.isNotEmpty ? timeParts[0] : '0') ?? 0;
+                      final int minute = int.tryParse(timeParts.length > 1 ? timeParts[1] : '0') ?? 0;
+                      
+                      String suffix;
+                      if (isPm) {
+                        suffix = 'PM';
+                      } else if (isAm) {
+                        suffix = 'AM';
+                      } else if (hour >= 1 && hour <= 6) {
+                        suffix = 'PM'; // roughly afternoon
+                      } else if (hour >= 12) {
+                        suffix = 'PM';
+                      } else {
+                        suffix = 'AM';
                       }
+
+                      // Convert 24-hr (e.g. 13 -> 1) to 12-hr display if > 12
+                      int displayHour = hour;
+                      if (displayHour > 12) {
+                        displayHour -= 12;
+                      } else if (displayHour == 0) {
+                        displayHour = 12;
+                      }
+
+                      final hourStr = displayHour.toString().padLeft(2, '0');
+                      final minuteStr = minute.toString().padLeft(2, '0');
 
                       final now = DateTime.now();
                       final isSelectedToday = _selectedDate.year == now.year &&
@@ -196,7 +220,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _TimeLabel(label: timeLabel, suffix: suffix),
+                            _TimeLabel(hours: hourStr, minutes: minuteStr, suffix: suffix),
                             const SizedBox(width: 16),
                             Expanded(
                               child: _DynamicClassCard(
@@ -643,8 +667,8 @@ class _ScheduleHeaderDelegate extends SliverPersistentHeaderDelegate {
         ),
         const SizedBox(width: 10),
         GestureDetector(
-          onTap: () {
-            showModalBottomSheet(
+          onTap: () async {
+            final addedDate = await showModalBottomSheet<DateTime>(
               context: context,
               isScrollControlled: true,
               backgroundColor: Colors.transparent,
@@ -652,9 +676,12 @@ class _ScheduleHeaderDelegate extends SliverPersistentHeaderDelegate {
                 padding: EdgeInsets.only(
                   top: MediaQuery.of(context).padding.top + 40,
                 ),
-                child: const _NewScheduleSheet(),
+                child: NewScheduleSheet(initialDate: selectedDate),
               ),
             );
+            if (addedDate != null) {
+              onSelectDate(addedDate);
+            }
           },
           child: Container(
             width: 48,
@@ -756,28 +783,55 @@ class _DayCell extends StatelessWidget {
 }
 
 class _TimeLabel extends StatelessWidget {
-  final String label;
+  final String hours;
+  final String minutes;
   final String suffix;
-  const _TimeLabel({required this.label, required this.suffix});
+  const _TimeLabel({
+    required this.hours,
+    required this.minutes,
+    required this.suffix,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 44,
+      width: 46,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label,
-              style: GoogleFonts.urbanist(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF202020))),
-          Text(suffix,
-              style: GoogleFonts.urbanist(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.5,
-                  color: const Color(0xFF9CA3AF))),
+          Text(
+            '$hours:',
+            maxLines: 1,
+            softWrap: false,
+            style: GoogleFonts.urbanist(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              height: 1.05,
+              color: const Color(0xFF202020),
+            ),
+          ),
+          Text(
+            minutes,
+            maxLines: 1,
+            softWrap: false,
+            style: GoogleFonts.urbanist(
+              fontSize: 24,
+              fontWeight: FontWeight.w700,
+              height: 1.05,
+              color: const Color(0xFF202020),
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            suffix,
+            maxLines: 1,
+            style: GoogleFonts.urbanist(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+              color: const Color(0xFF9CA3AF),
+            ),
+          ),
         ],
       ),
     );
@@ -995,36 +1049,71 @@ class _LegendItem extends StatelessWidget {
   }
 }
 
-class _NewScheduleSheet extends StatefulWidget {
-  const _NewScheduleSheet();
+class NewScheduleSheet extends StatefulWidget {
+  final DateTime? initialDate;
+  const NewScheduleSheet({super.key, this.initialDate});
 
   @override
-  State<_NewScheduleSheet> createState() => _NewScheduleSheetState();
+  State<NewScheduleSheet> createState() => _NewScheduleSheetState();
 }
 
-class _NewScheduleSheetState extends State<_NewScheduleSheet> {
+class _NewScheduleSheetState extends State<NewScheduleSheet> {
   int _selectedColorIndex = 0;
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
   final TextEditingController _timeController = TextEditingController();
-  
+  final TextEditingController _roomController = TextEditingController();
+  final TextEditingController _pointsController = TextEditingController();
+
+  DateTime? _selectedDate;
+  TimeOfDay? _startTime;
+  TimeOfDay? _endTime;
+
   final _colors = [
-    {'name': 'Theory', 'color': const Color(0xFFD7A1A7)},
-    {'name': 'Design', 'color': const Color(0xFFC4B9DC)},
-    {'name': 'Studio', 'color': const Color(0xFFBDE4C9)},
-    {'name': 'Lab', 'color': const Color(0xFFE9CCAA)},
+    {'name': 'Theory', 'color': const Color(0xFFD7A1A7), 'code': '0xFFD7A1A7'},
+    {'name': 'Design', 'color': const Color(0xFFC4B9DC), 'code': '0xFFC4B9DC'},
+    {'name': 'Studio', 'color': const Color(0xFFBDE4C9), 'code': '0xFFBDE4C9'},
+    {'name': 'Lab', 'color': const Color(0xFFE9CCAA), 'code': '0xFFE9CCAA'},
   ];
 
   @override
+  void initState() {
+    super.initState();
+    final initD = widget.initialDate ?? DateTime.now();
+    _selectedDate = initD;
+    final monthStr = _months[initD.month].substring(0, 3);
+    final dayStr = _weekDaysShort[initD.weekday];
+    _dateController.text = "$dayStr, ${initD.day} $monthStr ${initD.year}";
+
+    _startTime = const TimeOfDay(hour: 9, minute: 0);
+    _endTime = const TimeOfDay(hour: 10, minute: 0);
+    _timeController.text = "${_formatTimeOfDay(_startTime!)} – ${_formatTimeOfDay(_endTime!)}";
+  }
+
+  @override
   void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
     _dateController.dispose();
     _timeController.dispose();
+    _roomController.dispose();
+    _pointsController.dispose();
     super.dispose();
   }
 
+  String _formatTimeOfDay(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final min = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return "$hour:$min $period";
+  }
+
   Future<void> _selectDate() async {
+    final initial = _selectedDate ?? DateTime.now();
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initial,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
       builder: (context, child) {
@@ -1039,6 +1128,7 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
       },
     );
     if (picked != null) {
+      _selectedDate = picked;
       final monthStr = _months[picked.month].substring(0, 3);
       final dayStr = _weekDaysShort[picked.weekday];
       setState(() {
@@ -1047,17 +1137,11 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
     }
   }
 
-  String _formatTime(TimeOfDay time) {
-    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
-    final min = time.minute.toString().padLeft(2, '0');
-    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
-    return "$hour:$min $period";
-  }
-
   Future<void> _selectTime() async {
     final TimeOfDay? start = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: _startTime ?? TimeOfDay.now(),
+      helpText: 'SELECT START TIME',
       builder: (context, child) {
         return Theme(
           data: ThemeData.light().copyWith(
@@ -1071,9 +1155,10 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
     );
     if (start != null) {
       if (!mounted) return;
+      final defaultEndHour = (start.hour + 1) % 24;
       final TimeOfDay? end = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay(hour: (start.hour + 1) % 24, minute: start.minute),
+        initialTime: _endTime ?? TimeOfDay(hour: defaultEndHour, minute: start.minute),
         helpText: 'SELECT END TIME',
         builder: (context, child) {
           return Theme(
@@ -1087,12 +1172,81 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
         },
       );
       setState(() {
-        if (end != null) {
-          _timeController.text = "${_formatTime(start)} – ${_formatTime(end)}";
-        } else {
-          _timeController.text = _formatTime(start);
-        }
+        _startTime = start;
+        _endTime = end ?? TimeOfDay(hour: defaultEndHour, minute: start.minute);
+        _timeController.text = "${_formatTimeOfDay(_startTime!)} – ${_formatTimeOfDay(_endTime!)}";
       });
+    }
+  }
+
+  Future<void> _saveSchedule() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a title for the schedule.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final date = _selectedDate ?? DateTime.now();
+    final start = _startTime ?? const TimeOfDay(hour: 9, minute: 0);
+    final end = _endTime ?? TimeOfDay(hour: (start.hour + 1) % 24, minute: start.minute);
+
+    final shortDay = _getShortDayName(date.weekday);
+    final fullDay = TimetableEntry.toFullDay(shortDay);
+
+    final colorHex = _colors[_selectedColorIndex]['code'] as String;
+
+    String instructor = _descController.text.trim();
+    if (instructor.isEmpty && _pointsController.text.trim().isNotEmpty) {
+      instructor = '${_pointsController.text.trim()} pts';
+    }
+
+    final newEntry = TimetableEntry(
+      id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
+      day: shortDay,
+      startTime: _formatTimeOfDay(start),
+      endTime: _formatTimeOfDay(end),
+      subject: title,
+      room: _roomController.text.trim(),
+      instructor: instructor,
+      colorCode: colorHex,
+      dayOfWeek: fullDay,
+    );
+
+    final updated = List<TimetableEntry>.from(globalTimetable)..add(newEntry);
+    const dayOrder = {'MON': 1, 'TUE': 2, 'WED': 3, 'THUR': 4, 'FRI': 5, 'SAT': 6, 'SUN': 7};
+    final now = DateTime.now();
+    updated.sort((a, b) {
+      final dayA = dayOrder[TimetableEntry.normalizeDay(a.day)] ?? 99;
+      final dayB = dayOrder[TimetableEntry.normalizeDay(b.day)] ?? 99;
+      if (dayA != dayB) {
+        return dayA.compareTo(dayB);
+      }
+      return a.startDateTime(now).compareTo(b.startDateTime(now));
+    });
+    await updateGlobalTimetable(updated);
+
+    if (mounted) {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context, date);
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_rounded, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text('Added "$title" to your schedule!')),
+            ],
+          ),
+          backgroundColor: const Color(0xFF1E7E34),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -1131,14 +1285,17 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('New Schedule', style: GoogleFonts.urbanist(fontSize: 28, fontWeight: FontWeight.w500, color: const Color(0xFF111315))),
-                    const SizedBox(height: 4),
-                    Text('Add a class, test or session', style: GoogleFonts.urbanist(fontSize: 14, color: const Color(0xFF94A3B8))),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('New Schedule', style: GoogleFonts.urbanist(fontSize: 28, fontWeight: FontWeight.w500, color: const Color(0xFF111315))),
+                      const SizedBox(height: 4),
+                      Text('Add a class, test or session', style: GoogleFonts.urbanist(fontSize: 14, color: const Color(0xFF94A3B8))),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 12),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
                   child: Container(
@@ -1162,11 +1319,11 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildLabel('TITLE'),
-                  _buildTextField(hint: 'Theory Test'),
+                  _buildTextField(hint: 'e.g. Theory Test or Math', controller: _titleController),
                   const SizedBox(height: 20),
                   
-                  _buildLabel('DESCRIPTION'),
-                  _buildTextField(hint: 'Covers main ideas and principles from the Design Theory topic.', maxLines: 3),
+                  _buildLabel('DESCRIPTION / INSTRUCTOR'),
+                  _buildTextField(hint: 'Covers main ideas, or instructor name...', controller: _descController, maxLines: 2),
                   const SizedBox(height: 20),
                   
                   Row(
@@ -1177,7 +1334,7 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
                           children: [
                             _buildLabel('DATE'),
                             _buildTextField(
-                              hint: 'Fri, 14 Jun 2026',
+                              hint: 'Select Date',
                               controller: _dateController,
                               readOnly: true,
                               onTap: _selectDate,
@@ -1192,7 +1349,7 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
                           children: [
                             _buildLabel('TIME'),
                             _buildTextField(
-                              hint: '10:00 – 11:00 AM',
+                              hint: 'Select Time',
                               controller: _timeController,
                               readOnly: true,
                               onTap: _selectTime,
@@ -1211,7 +1368,7 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildLabel('ROOM'),
-                            _buildTextField(hint: '244'),
+                            _buildTextField(hint: 'e.g. 244', controller: _roomController),
                           ],
                         ),
                       ),
@@ -1221,7 +1378,7 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             _buildLabel('POINTS'),
-                            _buildTextField(hint: '40'),
+                            _buildTextField(hint: 'e.g. 40', controller: _pointsController),
                           ],
                         ),
                       ),
@@ -1277,7 +1434,7 @@ class _NewScheduleSheetState extends State<_NewScheduleSheet> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
                         elevation: 0,
                       ),
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: _saveSchedule,
                       child: Text(
                         'Save Schedule',
                         style: GoogleFonts.urbanist(

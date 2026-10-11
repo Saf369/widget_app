@@ -1,7 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:home_widget/home_widget.dart';
+
+bool get _canUpdateHomeWidget =>
+    !kIsWeb &&
+    !Platform.environment.containsKey('FLUTTER_TEST') &&
+    (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS);
 
 class TimetableEntry {
   final String id;
@@ -216,10 +222,12 @@ Future<void> updateGlobalTimetable(List<TimetableEntry> entries) async {
     await prefs.setString(_kPrefsTimetableKey, jsonEncode(jsonList));
 
     // Also update HomeWidget data if on mobile
-    if (!kIsWeb) {
-      await HomeWidget.saveWidgetData<String>('timetable_entries', jsonEncode(jsonList));
-      await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
-      await HomeWidget.updateWidget(name: 'TimetableGlanceWidgetReceiver');
+    if (_canUpdateHomeWidget) {
+      try {
+        await HomeWidget.saveWidgetData<String>('timetable_entries', jsonEncode(jsonList));
+        await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
+        await HomeWidget.updateWidget(name: 'TimetableGlanceWidgetReceiver');
+      } catch (_) {}
     }
   } catch (e) {
     debugPrint('Error saving timetable to storage: $e');
@@ -241,11 +249,13 @@ Future<void> loadSavedTimetable() async {
     }
 
     // Immediately sync active timetable to HomeWidget so the Android widget is in sync from app launch
-    if (!kIsWeb) {
-      final jsonList = globalTimetable.map((e) => e.toJson()).toList();
-      await HomeWidget.saveWidgetData<String>('timetable_entries', jsonEncode(jsonList));
-      await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
-      await HomeWidget.updateWidget(name: 'TimetableGlanceWidgetReceiver');
+    if (_canUpdateHomeWidget) {
+      try {
+        final jsonList = globalTimetable.map((e) => e.toJson()).toList();
+        await HomeWidget.saveWidgetData<String>('timetable_entries', jsonEncode(jsonList));
+        await HomeWidget.updateWidget(name: 'TimetableWidgetProvider');
+        await HomeWidget.updateWidget(name: 'TimetableGlanceWidgetReceiver');
+      } catch (_) {}
     }
   } catch (e) {
     debugPrint('Error loading saved timetable: $e');

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:custom_syllabus/models/schedule.dart';
 import 'package:custom_syllabus/screens/schedule_screen.dart';
 
@@ -78,4 +79,40 @@ void main() {
     expect(find.text('Machine Learning'), findsWidgets);
     expect(find.text('Algorithms'), findsNothing);
   });
+
+  testWidgets('NewScheduleSheet adds a class to globalTimetable and updates notifier', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(400 * 3, 900 * 3);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    await updateGlobalTimetable([]);
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: NewScheduleSheet(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    // Verify sheet is open
+    expect(find.text('New Schedule'), findsOneWidget);
+
+    // Enter title in first TextField
+    await tester.enterText(find.byType(TextField).first, 'Advanced Robotics');
+    await tester.pump();
+
+    // Tap Save Schedule
+    final saveButton = find.widgetWithText(ElevatedButton, 'Save Schedule');
+    expect(saveButton, findsOneWidget);
+    await tester.tap(saveButton);
+    await tester.pump(const Duration(seconds: 5));
+
+    // Verify entry is added to globalTimetable
+    expect(globalTimetable.any((e) => e.subject == 'Advanced Robotics'), isTrue);
+  });
 }
+
+
