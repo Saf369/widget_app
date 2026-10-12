@@ -53,7 +53,14 @@ class FirestoreService:
             logger.warning("Firestore is not connected. Timetable not saved to cloud.")
             return False
         try:
-            doc_ref = self.db.collection("users").document(user_id).collection("timetable").document("current")
+            # Ensure parent user document exists and has metadata
+            user_ref = self.db.collection("users").document(user_id)
+            user_ref.set({
+                "has_timetable": True,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }, merge=True)
+
+            doc_ref = user_ref.collection("timetable").document("current")
             payload = {
                 "user_id": user_id,
                 "entries": timetable_data.get("entries", []),

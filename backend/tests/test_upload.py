@@ -14,7 +14,8 @@ class TestUploadEndpoint(unittest.TestCase):
     def test_upload_invalid_file_extension(self):
         response = self.client.post(
             "/analyze-timetable/",
-            files={"file": ("test.txt", b"plain text", "text/plain")}
+            files={"file": ("test.txt", b"plain text", "text/plain")},
+            headers={"Authorization": "Bearer test-token"},
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("Unsupported file type", response.json()["detail"])
@@ -22,7 +23,8 @@ class TestUploadEndpoint(unittest.TestCase):
     def test_upload_empty_file(self):
         response = self.client.post(
             "/analyze-timetable/",
-            files={"file": ("timetable.pdf", b"", "application/pdf")}
+            files={"file": ("timetable.pdf", b"", "application/pdf")},
+            headers={"Authorization": "Bearer test-token"},
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn("empty", response.json()["detail"].lower())

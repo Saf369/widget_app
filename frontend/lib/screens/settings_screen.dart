@@ -1,9 +1,12 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'upload_timetable_screen.dart';
+import '../services/auth_service.dart';
+import '../main.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -88,15 +91,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
                     child: Row(
                       children: [
-                        // Avatar
-                        Container(
-                          width: 54,
-                          height: 54,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFB9C2C7),
-                            shape: BoxShape.circle,
+                        // Back to Home button
+                        GestureDetector(
+                          onTap: () => AppShell.of(context)?.goToTab(0),
+                          behavior: HitTestBehavior.opaque,
+                          child: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.7),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.arrow_back_rounded, color: Color(0xFF141414), size: 22),
+                            ),
                           ),
-                          child: const Icon(Icons.person, color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 14),
+                        // Live avatar from Firebase Auth
+                        StreamBuilder<User?>(
+                          stream: AuthService().authStateChanges,
+                          builder: (context, snapshot) {
+                            final user = snapshot.data;
+                            final photoUrl = user?.photoURL;
+                            if (photoUrl != null && photoUrl.isNotEmpty) {
+                              return CircleAvatar(
+                                radius: 27,
+                                backgroundImage: NetworkImage(photoUrl),
+                              );
+                            }
+                            return Container(
+                              width: 54, height: 54,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFB9C2C7), shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  (user?.displayName?.isNotEmpty == true
+                                      ? user!.displayName![0]
+                                      : (user?.email?.isNotEmpty == true
+                                          ? user!.email![0].toUpperCase()
+                                          : '?')),
+                                  style: GoogleFonts.urbanist(
+                                    fontSize: 22, fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         const Spacer(),
                         const _GlassIconButton(child: _ThreeDots(color: Color(0xFF1A1A1A))),
@@ -124,10 +175,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         )),
                   ),
                   const SizedBox(height: 24),
-                  // Profile card
+                  // Profile card (live data)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
-                    child: _ProfileCard(),
+                    child: StreamBuilder<User?>(
+                      stream: AuthService().authStateChanges,
+                      builder: (context, snapshot) {
+                        final user = snapshot.data;
+                        return _ProfileCard(
+                          displayName: user?.displayName ?? user?.email?.split('@').first ?? 'User',
+                          email: user?.email ?? '',
+                          photoUrl: user?.photoURL,
+                        );
+                      },
+                    ),
                   ),
                   const SizedBox(height: 20),
                   // Section label
@@ -143,41 +204,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 22),
                     child: _SettingsGroup(items: [
-                      Opacity(
-                        opacity: 0.6,
-                        child: const _SettingsItem(
-                          iconBg: Color(0xFFE8CACF),
-                          icon: Icons.notifications_outlined,
-                          label: 'Notifications',
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _ComingSoonBadge(),
-                              SizedBox(width: 12),
-                              _ToggleOff(),
-                            ],
-                          ),
+                      _SettingsItem(
+                        iconBg: const Color(0xFFE8CACF),
+                        icon: Icons.notifications_outlined,
+                        label: 'Notifications',
+                        trailing: _ToggleSwitch(
+                          value: _notificationsEnabled,
+                          onChanged: _setNotifications,
                         ),
                       ),
-                      Opacity(
-                        opacity: 0.6,
-                        child: const _SettingsItem(
-                          iconBg: Color(0xFFCDE6E2),
-                          icon: Icons.alarm_rounded,
-                          label: 'Study reminders',
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _ComingSoonBadge(),
-                              SizedBox(width: 12),
-                              _ToggleOff(),
-                            ],
-                          ),
+                      _SettingsItem(
+                        iconBg: const Color(0xFFCDE6E2),
+                        icon: Icons.alarm_rounded,
+                        label: 'Study reminders',
+                        trailing: _ToggleSwitch(
+                          value: _studyRemindersEnabled,
+                          onChanged: _setStudyReminders,
                         ),
                       ),
-                      Opacity(
+                      const Opacity(
                         opacity: 0.6,
-                        child: const _SettingsItem(
+                        child: _SettingsItem(
                           iconBg: Color(0xFFD6CBE6),
                           icon: Icons.smart_toy_outlined,
                           label: 'AI Tutor',
@@ -272,13 +319,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           launchUrl(Uri.parse('mailto:safmu2090@gmail.com'));
                         },
                       ),
-                      const _SettingsItem(
-                        iconBg: Color(0xFFF0CFCF),
+                      _SettingsItem(
+                        iconBg: const Color(0xFFF0CFCF),
                         icon: Icons.logout_rounded,
                         label: 'Log out',
-                        trailing: _ChevronTrailing(),
+                        trailing: const _ChevronTrailing(),
                         isLast: true,
                         isDestructive: true,
+                        onTap: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Log out'),
+                              content: const Text('Are you sure you want to log out?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                  child: const Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                  child: const Text('Log out',
+                                      style: TextStyle(color: Colors.red)),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true && context.mounted) {
+                            await AuthService().signOut();
+                            // StreamBuilder in main.dart will automatically redirect to LoginScreen
+                          }
+                        },
                       ),
                     ]),
                   ),
@@ -334,101 +405,123 @@ class _ThreeDots extends StatelessWidget {
 }
 
 class _ProfileCard extends StatelessWidget {
+  final String displayName;
+  final String email;
+  final String? photoUrl;
+
+  const _ProfileCard({
+    required this.displayName,
+    required this.email,
+    this.photoUrl,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 96,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [Color(0xFFCBBFDD), Color(0xFFC4B8D8)],
         ),
         borderRadius: BorderRadius.circular(32),
         border: Border.all(color: Colors.white.withOpacity(0.6), width: 1),
       ),
+      clipBehavior: Clip.hardEdge,
       child: Stack(
         children: [
-          // Arc
+          // Decorative arc
           Positioned(
-            right: -35,
-            top: -60,
+            right: -35, top: -60,
             child: Container(
-              width: 150,
-              height: 150,
+              width: 150, height: 150,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                    color: Colors.white.withOpacity(0.5), width: 1),
+                border: Border.all(color: Colors.white.withOpacity(0.4), width: 1),
               ),
             ),
           ),
-          // Avatar
-          Positioned(
-            left: 16,
-            top: 16,
-            child: Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                color: const Color(0xFFB9C2C7),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: const Icon(Icons.person, color: Colors.white, size: 32),
-            ),
-          ),
-          // Name
-          Positioned(
-            left: 92,
-            top: 18,
-            child: Text('Anna',
-                style: GoogleFonts.urbanist(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF141414))),
-          ),
-          // Email
-          Positioned(
-            left: 92,
-            top: 46,
-            child: Text('anna@studio.edu',
-                style: GoogleFonts.urbanist(
-                    fontSize: 13, color: const Color(0xFF5A4E80))),
-          ),
-          // Plan chip
-          Positioned(
-            left: 92,
-            top: 66,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.45),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text('Student plan',
-                  style: GoogleFonts.urbanist(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFF3A3350))),
-            ),
-          ),
-          // Edit button
-          Positioned(
-            right: 16,
-            top: 27,
-            child: Container(
-              width: 42,
-              height: 42,
-              decoration: const BoxDecoration(
-                color: Color(0xFF0E0E10),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text('↗',
-                    style: GoogleFonts.urbanist(
-                        fontSize: 17, color: Colors.white)),
-              ),
+          // Content row
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                // Avatar
+                photoUrl != null && photoUrl!.isNotEmpty
+                    ? CircleAvatar(
+                        radius: 30,
+                        backgroundImage: NetworkImage(photoUrl!),
+                      )
+                    : Container(
+                        width: 60, height: 60,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFB9C2C7),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: Center(
+                          child: Text(
+                            displayName.isNotEmpty ? displayName[0].toUpperCase() : '?',
+                            style: GoogleFonts.urbanist(
+                              fontSize: 22, fontWeight: FontWeight.w600, color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                const SizedBox(width: 14),
+                // Name + email + chip
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        displayName,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: GoogleFonts.urbanist(
+                          fontSize: 18, fontWeight: FontWeight.w600,
+                          color: const Color(0xFF141414),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        email,
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        style: GoogleFonts.urbanist(
+                          fontSize: 12.5, color: const Color(0xFF5A4E80),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.45),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text('Student plan',
+                            style: GoogleFonts.urbanist(
+                              fontSize: 11, fontWeight: FontWeight.w500,
+                              color: const Color(0xFF3A3350),
+                            )),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Edit button
+                Container(
+                  width: 42, height: 42,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF0E0E10), shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text('↗',
+                        style: GoogleFonts.urbanist(fontSize: 17, color: Colors.white)),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -604,32 +697,6 @@ class _ComingSoonBadge extends StatelessWidget {
   }
 }
 
-class _ToggleOn extends StatelessWidget {
-  const _ToggleOn();
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 28,
-      decoration: BoxDecoration(
-        color: const Color(0xFF0E0E10),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Container(
-          width: 22,
-          height: 22,
-          margin: const EdgeInsets.all(3),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _ToggleOff extends StatelessWidget {
   const _ToggleOff();

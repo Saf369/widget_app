@@ -210,16 +210,21 @@ List<TimetableEntry> globalTimetable = List<TimetableEntry>.from(_initialDefault
 final ValueNotifier<List<TimetableEntry>> timetableNotifier = ValueNotifier<List<TimetableEntry>>(globalTimetable);
 
 const String _kPrefsTimetableKey = 'saved_timetable_entries';
+const String _kHasUserTimetableKey = 'has_user_uploaded_timetable';
+
+bool hasUserUploadedTimetable = false;
 
 /// Updates globalTimetable, notifies listeners, and persists to local storage and HomeWidget
 Future<void> updateGlobalTimetable(List<TimetableEntry> entries) async {
   globalTimetable = List<TimetableEntry>.from(entries);
+  hasUserUploadedTimetable = entries.isNotEmpty;
   timetableNotifier.value = List<TimetableEntry>.from(entries);
 
   try {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = entries.map((e) => e.toJson()).toList();
     await prefs.setString(_kPrefsTimetableKey, jsonEncode(jsonList));
+    await prefs.setBool(_kHasUserTimetableKey, entries.isNotEmpty);
 
     // Also update HomeWidget data if on mobile
     if (_canUpdateHomeWidget) {
@@ -244,12 +249,14 @@ Future<void> updateGlobalTimetable(List<TimetableEntry> entries) async {
 Future<void> loadSavedTimetable() async {
   try {
     final prefs = await SharedPreferences.getInstance();
+    hasUserUploadedTimetable = prefs.getBool(_kHasUserTimetableKey) ?? false;
     final jsonString = prefs.getString(_kPrefsTimetableKey);
     if (jsonString != null && jsonString.isNotEmpty) {
       final List<dynamic> decoded = jsonDecode(jsonString);
       final entries = decoded.map((e) => TimetableEntry.fromJson(e as Map<String, dynamic>)).toList();
       if (entries.isNotEmpty) {
         globalTimetable = entries;
+        hasUserUploadedTimetable = true;
         timetableNotifier.value = List<TimetableEntry>.from(entries);
       }
     }
@@ -272,4 +279,15 @@ Future<void> loadSavedTimetable() async {
   } catch (e) {
     debugPrint('Error loading saved timetable: $e');
   }
+}
+
+Future<void> clearUserTimetable() async {
+  hasUserUploadedTimetable = false;
+  globalTimetable = [];
+  timetableNotifier.value = [];
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kPrefsTimetableKey);
+    await prefs.remove(_kHasUserTimetableKey);
+  } catch (_) {}
 }

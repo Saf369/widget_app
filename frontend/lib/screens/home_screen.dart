@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/schedule.dart';
 import 'upload_timetable_screen.dart';
@@ -681,10 +682,22 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                           const SizedBox(height: 30),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
-                            child: Text(
-                              'Hello, Anna',
-                              style: GoogleFonts.urbanist(fontSize: 18, fontWeight: FontWeight.w400, color: const Color(0xFF5B5B60)),
-                            ),
+                            child: Builder(builder: (context) {
+                              final user = FirebaseAuth.instance.currentUser;
+                              final name = user?.displayName?.isNotEmpty == true
+                                  ? user!.displayName!.split(' ').first
+                                  : (user?.email?.isNotEmpty == true
+                                      ? user!.email!.split('@').first
+                                      : 'there');
+                              return Text(
+                                'Hello, $name',
+                                style: GoogleFonts.urbanist(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w400,
+                                  color: const Color(0xFF5B5B60),
+                                ),
+                              );
+                            }),
                           ),
                           const SizedBox(height: 4),
                           Padding(

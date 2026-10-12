@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/schedule_screen.dart';
@@ -15,6 +16,8 @@ import 'screens/upload_timetable_screen.dart';
 import 'screens/loading_screen.dart';
 import 'models/schedule.dart';
 import 'package:home_widget/home_widget.dart';
+import 'services/auth_service.dart';
+import 'services/api_service.dart';
 
 @pragma("vm:entry-point")
 Future<void> backgroundCallback(Uri? uri) async {
@@ -70,7 +73,7 @@ class CustomSyllabusApp extends StatelessWidget {
   }
 }
 
-enum AppState { login, upload, loading, home }
+enum AppState { upload, loading, home }
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -85,12 +88,60 @@ class AppShell extends StatefulWidget {
 
 class AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
-  AppState _appState = AppState.login;
+  late final Stream<User?> _authStream = AuthService().authStateChanges;
+  AppState _appState = hasUserUploadedTimetable ? AppState.home : AppState.upload;
+  String? _checkedUid;
+  bool _isCheckingCloud = false;
+
+  static const List<Widget> _screens = [
+    HomeScreen(),
+    ScheduleScreen(),
+    LectureScreen(),
+    AiChatScreen(),
+    SettingsScreen(),
+  ];
 
   @override
   void initState() {
     super.initState();
     _updateNativeWidget();
+  }
+
+  void _checkUserTimetable(String uid) {
+    if (_checkedUid == uid || _isCheckingCloud) return;
+    _checkedUid = uid;
+    _isCheckingCloud = true;
+
+    ApiService.getTimetable().then((cloudEntries) {
+      if (!mounted) return;
+      if (cloudEntries != null && cloudEntries.isNotEmpty) {
+        // User already has timetable saved in Firestore
+        updateGlobalTimetable(cloudEntries);
+        setState(() {
+          _appState = AppState.home;
+          _isCheckingCloud = false;
+        });
+      } else if (hasUserUploadedTimetable && globalTimetable.isNotEmpty) {
+        // User has local uploaded timetable
+        setState(() {
+          _appState = AppState.home;
+          _isCheckingCloud = false;
+        });
+      } else {
+        // New user! Needs to upload timetable
+        setState(() {
+          _appState = AppState.upload;
+          _isCheckingCloud = false;
+        });
+      }
+    }).catchError((err) {
+      debugPrint('Cloud timetable check: $err');
+      if (!mounted) return;
+      setState(() {
+        _appState = hasUserUploadedTimetable ? AppState.home : AppState.upload;
+        _isCheckingCloud = false;
+      });
+    });
   }
 
   Future<void> _updateNativeWidget() async {
@@ -120,43 +171,69 @@ class AppShellState extends State<AppShell> {
     });
   }
 
-  List<Widget> get _screens => const [
-    HomeScreen(),
-    ScheduleScreen(),
-    LectureScreen(),
-    AiChatScreen(),
-    SettingsScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 600),
-      switchInCurve: Curves.easeInOutCubic,
-      switchOutCurve: Curves.easeInOutCubic,
-      transitionBuilder: (child, animation) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
+    return StreamBuilder<User?>(
+      stream: _authStream,
+      builder: (context, snapshot) {
+        // Still initializing Firebase Auth
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            backgroundColor: Color(0xFFECE8F4),
+            body: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation(Color(0xFF111113)),
+              ),
+            ),
+          );
+        }
+
+        // Not signed in — auth middleware gate
+        if (!snapshot.hasData || snapshot.data == null) {
+          _checkedUid = null;
+          _isCheckingCloud = false;
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 600),
+            switchInCurve: Curves.easeInOutCubic,
+            switchOutCurve: Curves.easeInOutCubic,
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            child: LoginScreen(
+              key: const ValueKey('app_login_screen'),
+              onLogin: () {},
+            ),
+          );
+        }
+
+        // Signed in — check timetable for this user
+        final user = snapshot.data!;
+        if (_checkedUid != user.uid) {
+          _checkUserTimetable(user.uid);
+        }
+
+        // Signed in — show the authenticated app
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 600),
+          switchInCurve: Curves.easeInOutCubic,
+          switchOutCurve: Curves.easeInOutCubic,
+          transitionBuilder: (child, animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: child,
+            );
+          },
+          child: _buildAppStateWidget(),
         );
       },
-      child: _buildAppStateWidget(),
     );
   }
 
   Widget _buildAppStateWidget() {
-    if (_appState == AppState.login) {
-      return LoginScreen(
-        key: const ValueKey('app_login_screen'),
-        onLogin: () => setState(() => _appState = AppState.upload),
-      );
-    }
-
     if (_appState == AppState.upload) {
       return UploadTimetableScreen(
         key: const ValueKey('app_upload_screen'),
         onUpload: () => setState(() => _appState = AppState.loading),
-        onSkip: () => setState(() => _appState = AppState.loading),
+        onSkip: () => setState(() => _appState = AppState.home),
       );
     }
 
@@ -167,56 +244,37 @@ class AppShellState extends State<AppShell> {
       );
     }
 
-    return Scaffold(
-      key: const ValueKey('app_home_scaffold'),
-      backgroundColor: const Color(0xFFF3F0EE),
-      extendBody: true,
-      body: Stack(
-        children: [
-          Stack(
-            children: List.generate(_screens.length, (index) {
-              final isActive = index == _selectedIndex;
-              
-              Offset targetOffset;
-              if (isActive) {
-                targetOffset = Offset.zero;
-              } else {
-                targetOffset = const Offset(0.0, 0.08);
-              }
-
-              return IgnorePointer(
-                ignoring: !isActive,
-                child: AnimatedSlide(
-                  duration: const Duration(milliseconds: 500),
-                  curve: Curves.fastOutSlowIn,
-                  offset: targetOffset,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeIn,
-                    opacity: isActive ? 1.0 : 0.0,
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: double.infinity,
-                      child: _screens[index],
-                    ),
+    return PopScope(
+      canPop: _selectedIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _selectedIndex != 0) {
+          goToTab(0);
+        }
+      },
+      child: Scaffold(
+        key: const ValueKey('app_home_scaffold'),
+        backgroundColor: const Color(0xFFF3F0EE),
+        extendBody: true,
+        body: Stack(
+          children: [
+            IndexedStack(
+              index: _selectedIndex,
+              children: _screens,
+            ),
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: _BottomNavBar(
+                    selectedIndex: _selectedIndex,
+                    onTap: (i) => goToTab(i),
                   ),
-                ),
-              );
-            }),
-          ),
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 20),
-                child: _BottomNavBar(
-                  selectedIndex: _selectedIndex,
-                  onTap: (i) => goToTab(i),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -257,9 +315,9 @@ class _BottomNavBar extends StatelessWidget {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12.0, sigmaY: 12.0),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.45), // Reduced opacity for more transparency
+              color: Colors.white.withOpacity(0.45),
               borderRadius: BorderRadius.circular(32),
               border: Border.all(
                 color: Colors.white.withOpacity(0.6),
@@ -271,8 +329,9 @@ class _BottomNavBar extends StatelessWidget {
                 final itemWidth = constraints.maxWidth / items.length;
                 return Stack(
                   children: [
+                    // Smooth sliding black pill indicator
                     AnimatedPositioned(
-                      duration: const Duration(milliseconds: 350),
+                      duration: const Duration(milliseconds: 200),
                       curve: Curves.easeOutCubic,
                       left: selectedIndex * itemWidth,
                       top: 0,
@@ -280,48 +339,51 @@ class _BottomNavBar extends StatelessWidget {
                       width: itemWidth,
                       child: Center(
                         child: Container(
-                          width: 64,
+                          width: 54,
                           height: 44,
                           decoration: BoxDecoration(
                             color: const Color(0xFF0B0B0D),
-                            borderRadius: BorderRadius.circular(25),
+                            borderRadius: BorderRadius.circular(22),
                           ),
                         ),
                       ),
                     ),
+                    // Equal width touch targets
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: List.generate(items.length, (i) {
                         final isActive = selectedIndex == i;
-                        return GestureDetector(
-                          onTap: () => onTap(i),
-                          behavior: HitTestBehavior.opaque,
-                          child: SizedBox(
-                            width: itemWidth,
-                            height: 44,
-                            child: Center(
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 350),
-                                curve: Curves.easeOutCubic,
-                                width: isActive ? 64 : 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: isActive ? Colors.transparent : Colors.white.withOpacity(0.25),
-                                  borderRadius: BorderRadius.circular(25),
-                                  border: isActive
-                                      ? Border.all(color: Colors.transparent, width: 1.0)
-                                      : Border.all(color: Colors.white, width: 1.0),
-                                ),
-                                child: Center(
-                                  child: TweenAnimationBuilder<Color?>(
-                                    tween: ColorTween(
-                                      begin: const Color(0xFF1A1A1F),
-                                      end: isActive ? Colors.white : const Color(0xFF1A1A1F),
+                        return Expanded(
+                          child: GestureDetector(
+                            onTap: () => onTap(i),
+                            behavior: HitTestBehavior.opaque,
+                            child: SizedBox(
+                              height: 44,
+                              child: Center(
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  curve: Curves.easeOutCubic,
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? Colors.transparent
+                                        : Colors.white.withOpacity(0.25),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isActive
+                                          ? Colors.transparent
+                                          : Colors.white.withOpacity(0.8),
+                                      width: 1.0,
                                     ),
-                                    duration: const Duration(milliseconds: 350),
-                                    builder: (context, color, _) {
-                                      return Icon(items[i], color: color, size: 20);
-                                    },
+                                  ),
+                                  child: Center(
+                                    child: Icon(
+                                      items[i],
+                                      color: isActive
+                                          ? Colors.white
+                                          : const Color(0xFF1A1A1F),
+                                      size: 20,
+                                    ),
                                   ),
                                 ),
                               ),

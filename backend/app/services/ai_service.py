@@ -101,10 +101,10 @@ async def extract_timetable(file_bytes: bytes, filename: str, content_type: Opti
         "4. Be thorough and make sure no classes are missed across all days of the week."
     )
 
-    # Model priority: User-requested model (gemini-3.8-flash) first, with gemini-2.5-flash fallback if 503 high demand occurs
-    preferred = settings.ai_model or "gemini-3.8-flash"
+    # Model priority: gemini-2.5-flash first (fastest and most stable), then gemini-3.8-flash
+    preferred = settings.ai_model or "gemini-2.5-flash"
     models_to_try = [preferred]
-    for candidate in ["gemini-3.8-flash", "gemini-2.5-flash"]:
+    for candidate in ["gemini-2.5-flash", "gemini-3.8-flash"]:
         if candidate not in models_to_try:
             models_to_try.append(candidate)
 

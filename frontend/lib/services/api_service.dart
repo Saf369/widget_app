@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'package:flutter/foundation.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/schedule.dart';
 
 class ApiService {
   static const String _kCustomUrlKey = 'custom_backend_base_url';
@@ -114,6 +116,19 @@ class ApiService {
     final uri = Uri.parse('$baseUrl/analyze-timetable/');
     final request = http.MultipartRequest('POST', uri);
 
+    // Attach Firebase ID token so the backend auth middleware accepts the upload
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final idToken = await user.getIdToken();
+        if (idToken != null && idToken.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $idToken';
+        }
+      }
+    } catch (e) {
+      debugPrint('Notice: unable to fetch Firebase token: $e');
+    }
+
     Uint8List? rawBytes = file.bytes;
     if ((rawBytes == null || rawBytes.isEmpty) && file.path != null && !kIsWeb) {
       try {
@@ -168,5 +183,78 @@ class ApiService {
       } catch (_) {}
       throw Exception(errorMessage);
     }
+  }
+
+  /// Saves timetable entries directly to Firestore via backend /api/timetable/save
+  static Future<bool> saveTimetable(List<TimetableEntry> entries, {String summary = ''}) async {
+    final workingUrl = await findReachableUrl();
+    if (workingUrl == null) return false;
+
+    try {
+      final uri = Uri.parse('$workingUrl/api/timetable/save');
+      final user = FirebaseAuth.instance.currentUser;
+      String? idToken;
+      if (user != null) {
+        idToken = await user.getIdToken();
+      }
+
+      final body = jsonEncode({
+        'entries': entries.map((e) => e.toJson()).toList(),
+        'summary': summary.isNotEmpty ? summary : 'Extracted timetable',
+      });
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          if (idToken != null) 'Authorization': 'Bearer $idToken',
+        },
+        body: body,
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        debugPrint('Timetable saved to Firestore response: $data');
+        return data['saved_to_cloud'] == true;
+      }
+    } catch (e) {
+      debugPrint('Error saving timetable to cloud: $e');
+    }
+    return false;
+  }
+
+  /// Fetches the user's active timetable from Firestore via /api/timetable/
+  static Future<List<TimetableEntry>?> getTimetable() async {
+    final workingUrl = await findReachableUrl();
+    if (workingUrl == null) return null;
+
+    try {
+      final uri = Uri.parse('$workingUrl/api/timetable/');
+      final user = FirebaseAuth.instance.currentUser;
+      String? idToken;
+      if (user != null) {
+        idToken = await user.getIdToken();
+      }
+
+      final response = await http.get(
+        uri,
+        headers: {
+          if (idToken != null) 'Authorization': 'Bearer $idToken',
+        },
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['found'] == true && data['entries'] is List) {
+          final list = (data['entries'] as List)
+              .map((e) => TimetableEntry.fromJson(e as Map<String, dynamic>))
+              .toList();
+          return list;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching timetable from Firestore: $e');
+    }
+    return null;
   }
 }

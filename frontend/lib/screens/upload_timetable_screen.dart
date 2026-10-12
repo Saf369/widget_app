@@ -95,6 +95,13 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
           // Save and broadcast to all screens
           await updateGlobalTimetable(entries);
 
+          // Explicitly save to Firestore to guarantee cloud storage
+          try {
+            await ApiService.saveTimetable(entries, summary: data['reasoning']?.toString() ?? '');
+          } catch (e) {
+            debugPrint('Notice: Cloud Firestore sync: $e');
+          }
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
