@@ -160,54 +160,11 @@ DateTime parseClassTimeToDate(DateTime baseDate, String timeStr, {bool isEnd = f
   return DateTime(baseDate.year, baseDate.month, baseDate.day, hour, minute);
 }
 
-// Initial default timetable
-final List<TimetableEntry> _initialDefaultTimetable = [
-  // MONDAY
-  TimetableEntry(day: 'MON', startTime: '8:30', endTime: '9:30', subject: 'MATH', room: 'Room 302', instructor: 'Dr. Euler', colorCode: '0xFFE8CACF'),
-  TimetableEntry(day: 'MON', startTime: '9:30', endTime: '10:30', subject: 'PDHPE', room: 'Gym', instructor: 'Coach Taylor', colorCode: '0xFFCDE6E2'),
-  TimetableEntry(day: 'MON', startTime: '10:30', endTime: '11:30', subject: 'ENGLISH', room: 'Hall 2', instructor: 'Ms. Austen', colorCode: '0xFFDBD3EE'),
-  TimetableEntry(day: 'MON', startTime: '11:30', endTime: '12:30', subject: 'VISUAL ART', room: 'Studio A', instructor: 'Mr. Monet', colorCode: '0xFFEFCCB8'),
-  TimetableEntry(day: 'MON', startTime: '1:30', endTime: '2:30', subject: 'HISTORY', room: 'Room 105', instructor: 'Dr. Herodotus', colorCode: '0xFFE9CCAA'),
-  TimetableEntry(day: 'MON', startTime: '2:30', endTime: '3:30', subject: 'DRAMA', room: 'Theater', instructor: 'Ms. Shakespeare', colorCode: '0xFFBDE4C9'),
-
-  // TUESDAY
-  TimetableEntry(day: 'TUE', startTime: '8:30', endTime: '9:30', subject: 'LOTE', room: 'Lab B', instructor: 'Mme. Curie', colorCode: '0xFFB5E2FA'),
-  TimetableEntry(day: 'TUE', startTime: '9:30', endTime: '10:30', subject: 'PDHPE', room: 'Gym', instructor: 'Coach Taylor', colorCode: '0xFFCDE6E2'),
-  TimetableEntry(day: 'TUE', startTime: '10:30', endTime: '11:30', subject: 'GEOGRAPHY', room: 'Hall 1', instructor: 'Dr. Darwin', colorCode: '0xFFE8CACF'),
-  TimetableEntry(day: 'TUE', startTime: '11:30', endTime: '12:30', subject: 'MUSIC', room: 'Audio Lab', instructor: 'Prof. Mozart', colorCode: '0xFFDBD3EE'),
-  TimetableEntry(day: 'TUE', startTime: '1:30', endTime: '2:30', subject: 'MATH', room: 'Room 302', instructor: 'Dr. Euler', colorCode: '0xFFEFCCB8'),
-  TimetableEntry(day: 'TUE', startTime: '2:30', endTime: '3:30', subject: 'SCIENCE', room: 'Lab 1', instructor: 'Dr. Franklin', colorCode: '0xFFBDE4C9'),
-
-  // WEDNESDAY
-  TimetableEntry(day: 'WED', startTime: '8:30', endTime: '9:30', subject: 'SCIENCE', room: 'Lab 1', instructor: 'Dr. Franklin', colorCode: '0xFFBDE4C9'),
-  TimetableEntry(day: 'WED', startTime: '9:30', endTime: '10:30', subject: 'LOTE', room: 'Lab B', instructor: 'Mme. Curie', colorCode: '0xFFB5E2FA'),
-  TimetableEntry(day: 'WED', startTime: '10:30', endTime: '11:30', subject: 'ENGLISH', room: 'Hall 2', instructor: 'Ms. Austen', colorCode: '0xFFDBD3EE'),
-  TimetableEntry(day: 'WED', startTime: '11:30', endTime: '12:30', subject: 'DRAMA', room: 'Theater', instructor: 'Ms. Shakespeare', colorCode: '0xFFE8CACF'),
-  TimetableEntry(day: 'WED', startTime: '1:30', endTime: '2:30', subject: 'MATH', room: 'Room 302', instructor: 'Dr. Euler', colorCode: '0xFFEFCCB8'),
-  TimetableEntry(day: 'WED', startTime: '2:30', endTime: '3:30', subject: 'GEOGRAPHY', room: 'Hall 1', instructor: 'Dr. Darwin', colorCode: '0xFFE9CCAA'),
-
-  // THURSDAY
-  TimetableEntry(day: 'THUR', startTime: '8:30', endTime: '9:30', subject: 'HISTORY', room: 'Room 105', instructor: 'Dr. Herodotus', colorCode: '0xFFE9CCAA'),
-  TimetableEntry(day: 'THUR', startTime: '9:30', endTime: '10:30', subject: 'SCIENCE', room: 'Lab 1', instructor: 'Dr. Franklin', colorCode: '0xFFBDE4C9'),
-  TimetableEntry(day: 'THUR', startTime: '10:30', endTime: '11:30', subject: 'MUSIC', room: 'Audio Lab', instructor: 'Prof. Mozart', colorCode: '0xFFDBD3EE'),
-  TimetableEntry(day: 'THUR', startTime: '11:30', endTime: '12:30', subject: 'GEOGRAPHY', room: 'Hall 1', instructor: 'Dr. Darwin', colorCode: '0xFFCDE6E2'),
-  TimetableEntry(day: 'THUR', startTime: '1:30', endTime: '2:30', subject: 'ENGLISH', room: 'Hall 2', instructor: 'Ms. Austen', colorCode: '0xFFEFCCB8'),
-  TimetableEntry(day: 'THUR', startTime: '2:30', endTime: '3:30', subject: 'LOTE', room: 'Lab B', instructor: 'Mme. Curie', colorCode: '0xFFB5E2FA'),
-
-  // FRIDAY
-  TimetableEntry(day: 'FRI', startTime: '8:30', endTime: '9:30', subject: 'VISUAL ART', room: 'Studio A', instructor: 'Mr. Monet', colorCode: '0xFFEFCCB8'),
-  TimetableEntry(day: 'FRI', startTime: '9:30', endTime: '10:30', subject: 'SCIENCE', room: 'Lab 1', instructor: 'Dr. Franklin', colorCode: '0xFFBDE4C9'),
-  TimetableEntry(day: 'FRI', startTime: '10:30', endTime: '11:30', subject: 'MATH', room: 'Room 302', instructor: 'Dr. Euler', colorCode: '0xFFE8CACF'),
-  TimetableEntry(day: 'FRI', startTime: '11:30', endTime: '12:30', subject: 'DRAMA', room: 'Theater', instructor: 'Ms. Shakespeare', colorCode: '0xFFDBD3EE'),
-  TimetableEntry(day: 'FRI', startTime: '1:30', endTime: '2:30', subject: 'ENGLISH', room: 'Hall 2', instructor: 'Ms. Austen', colorCode: '0xFFE9CCAA'),
-  TimetableEntry(day: 'FRI', startTime: '2:30', endTime: '3:30', subject: 'LOTE', room: 'Lab B', instructor: 'Mme. Curie', colorCode: '0xFFB5E2FA'),
-];
-
-// Active timetable in memory
-List<TimetableEntry> globalTimetable = List<TimetableEntry>.from(_initialDefaultTimetable);
+// Active timetable in memory (starts clean and empty until user uploads)
+List<TimetableEntry> globalTimetable = [];
 
 // Notifier to broadcast timetable updates to all screens
-final ValueNotifier<List<TimetableEntry>> timetableNotifier = ValueNotifier<List<TimetableEntry>>(globalTimetable);
+final ValueNotifier<List<TimetableEntry>> timetableNotifier = ValueNotifier<List<TimetableEntry>>([]);
 
 const String _kPrefsTimetableKey = 'saved_timetable_entries';
 const String _kHasUserTimetableKey = 'has_user_uploaded_timetable';
@@ -254,7 +211,15 @@ Future<void> loadSavedTimetable() async {
         globalTimetable = entries;
         hasUserUploadedTimetable = true;
         timetableNotifier.value = List<TimetableEntry>.from(entries);
+      } else {
+        globalTimetable = [];
+        hasUserUploadedTimetable = false;
+        timetableNotifier.value = [];
       }
+    } else {
+      globalTimetable = [];
+      hasUserUploadedTimetable = false;
+      timetableNotifier.value = [];
     }
 
     // Immediately sync active timetable to HomeWidget so the Android widget is in sync from app launch
@@ -281,5 +246,12 @@ Future<void> clearUserTimetable() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kPrefsTimetableKey);
     await prefs.remove(_kHasUserTimetableKey);
+    if (_canUpdateHomeWidget) {
+      await HomeWidget.saveWidgetData<String>('timetable_entries', '[]');
+      await HomeWidget.updateWidget(
+        name: 'TimetableGlanceWidgetReceiver',
+        qualifiedAndroidName: 'com.example.frontend.TimetableGlanceWidgetReceiver',
+      );
+    }
   } catch (_) {}
 }

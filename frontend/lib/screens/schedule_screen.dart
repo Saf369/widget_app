@@ -156,89 +156,156 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 120),
-            sliver: todaysEntries.isEmpty 
-              ? SliverToBoxAdapter(
-                  child: Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(40.0),
-                      child: Text(
-                        "No classes today",
-                        style: GoogleFonts.urbanist(
-                          color: Colors.grey,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              : SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final entry = todaysEntries[index];
-                      // Parse start time into 2-digit hour and 2-digit minute
-                      final rawTime = entry.startTime.trim().toUpperCase();
-                      final isPm = rawTime.contains('PM');
-                      final isAm = rawTime.contains('AM');
-                      final digitsOnly = rawTime.replaceAll(RegExp(r'[^0-9:]'), '');
-                      final timeParts = digitsOnly.split(':');
-                      
-                      int hour = int.tryParse(timeParts.isNotEmpty ? timeParts[0] : '0') ?? 0;
-                      final int minute = int.tryParse(timeParts.length > 1 ? timeParts[1] : '0') ?? 0;
-                      
-                      String suffix;
-                      if (isPm) {
-                        suffix = 'PM';
-                      } else if (isAm) {
-                        suffix = 'AM';
-                      } else if (hour >= 1 && hour <= 6) {
-                        suffix = 'PM'; // roughly afternoon
-                      } else if (hour >= 12) {
-                        suffix = 'PM';
-                      } else {
-                        suffix = 'AM';
-                      }
-
-                      // Convert 24-hr (e.g. 13 -> 1) to 12-hr display if > 12
-                      int displayHour = hour;
-                      if (displayHour > 12) {
-                        displayHour -= 12;
-                      } else if (displayHour == 0) {
-                        displayHour = 12;
-                      }
-
-                      final hourStr = displayHour.toString().padLeft(2, '0');
-                      final minuteStr = minute.toString().padLeft(2, '0');
-
-                      final now = DateTime.now();
-                      final isSelectedToday = _selectedDate.year == now.year &&
-                          _selectedDate.month == now.month &&
-                          _selectedDate.day == now.day;
-                      final isOngoing = isSelectedToday && entry.isHappeningNow(now);
-                      final isCompleted = isSelectedToday && entry.isCompleted(now);
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 24.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _TimeLabel(hours: hourStr, minutes: minuteStr, suffix: suffix),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _DynamicClassCard(
-                                entry: entry,
-                                isOngoing: isOngoing,
-                                isCompleted: isCompleted,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                    childCount: todaysEntries.length,
-                  ),
-                ),
+            sliver: _buildScheduleSliver(todaysEntries),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildScheduleSliver(List<TimetableEntry> todaysEntries) {
+    if (globalTimetable.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFFCEC1DE),
+              borderRadius: BorderRadius.circular(32),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'No Timetable Yet',
+                  style: GoogleFonts.urbanist(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF17141E),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Upload timetable to schedule days',
+                  style: GoogleFonts.urbanist(
+                    fontSize: 15,
+                    color: const Color(0xFF5F5370),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => UploadTimetableScreen(
+                          onUpload: () {
+                            Navigator.pop(context);
+                            setState(() {});
+                          },
+                          onSkip: () => Navigator.pop(context),
+                        ),
+                      ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF18151F),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  ),
+                  child: Text('Upload Timetable', style: GoogleFonts.urbanist(fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (todaysEntries.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(40.0),
+            child: Text(
+              "No classes today",
+              style: GoogleFonts.urbanist(
+                color: Colors.grey,
+                fontSize: 18,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          final entry = todaysEntries[index];
+          // Parse start time into 2-digit hour and 2-digit minute
+          final rawTime = entry.startTime.trim().toUpperCase();
+          final isPm = rawTime.contains('PM');
+          final isAm = rawTime.contains('AM');
+          final digitsOnly = rawTime.replaceAll(RegExp(r'[^0-9:]'), '');
+          final timeParts = digitsOnly.split(':');
+          
+          int hour = int.tryParse(timeParts.isNotEmpty ? timeParts[0] : '0') ?? 0;
+          final int minute = int.tryParse(timeParts.length > 1 ? timeParts[1] : '0') ?? 0;
+          
+          String suffix;
+          if (isPm) {
+            suffix = 'PM';
+          } else if (isAm) {
+            suffix = 'AM';
+          } else if (hour >= 1 && hour <= 6) {
+            suffix = 'PM'; // roughly afternoon
+          } else if (hour >= 12) {
+            suffix = 'PM';
+          } else {
+            suffix = 'AM';
+          }
+
+          // Convert 24-hr (e.g. 13 -> 1) to 12-hr display if > 12
+          int displayHour = hour;
+          if (displayHour > 12) {
+            displayHour -= 12;
+          } else if (displayHour == 0) {
+            displayHour = 12;
+          }
+
+          final hourStr = displayHour.toString().padLeft(2, '0');
+          final minuteStr = minute.toString().padLeft(2, '0');
+
+          final now = DateTime.now();
+          final isSelectedToday = _selectedDate.year == now.year &&
+              _selectedDate.month == now.month &&
+              _selectedDate.day == now.day;
+          final isOngoing = isSelectedToday && entry.isHappeningNow(now);
+          final isCompleted = isSelectedToday && entry.isCompleted(now);
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 24.0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _TimeLabel(hours: hourStr, minutes: minuteStr, suffix: suffix),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _DynamicClassCard(
+                    entry: entry,
+                    isOngoing: isOngoing,
+                    isCompleted: isCompleted,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+        childCount: todaysEntries.length,
       ),
     );
   }

@@ -12,17 +12,26 @@ void main() {
     final now = DateTime.now();
     final todayShort = ['MON', 'TUE', 'WED', 'THUR', 'FRI', 'SAT', 'SUN'][now.weekday - 1];
 
-    // Create an ongoing class that encompasses current time today
-    final startMin = now.minute > 2 ? now.minute - 2 : 0;
-    final ongoingStartStr = '${now.hour}:${startMin.toString().padLeft(2, '0')}';
-    final endHour = now.hour < 23 ? now.hour + 1 : 23;
-    final endMin = now.hour < 23 ? now.minute : 59;
-    final ongoingEndStr = '$endHour:${endMin.toString().padLeft(2, '0')}';
+    // Create an ongoing class and next upcoming class that encompass current time today
+    final String ongoingStartStr;
+    final String ongoingEndStr;
+    final String nextStartStr;
+    final String nextEndStr;
 
-    // Create an upcoming class starting later if time permits, or next period
-    final nextHour = (endHour + 1) <= 23 ? endHour + 1 : endHour;
-    final nextStartStr = '$nextHour:00';
-    final nextEndStr = '$nextHour:50';
+    if (now.hour == 23) {
+      final startMin = now.minute > 5 ? now.minute - 5 : 0;
+      ongoingStartStr = '23:${startMin.toString().padLeft(2, '0')}';
+      final endMin = now.minute < 50 ? now.minute + 5 : 56;
+      ongoingEndStr = '23:${endMin.toString().padLeft(2, '0')}';
+      nextStartStr = '23:${(endMin + 1).toString().padLeft(2, '0')}';
+      nextEndStr = '23:59';
+    } else {
+      final startMin = now.minute > 2 ? now.minute - 2 : 0;
+      ongoingStartStr = '${now.hour}:${startMin.toString().padLeft(2, '0')}';
+      ongoingEndStr = '${now.hour + 1}:00';
+      nextStartStr = '${now.hour + 1}:10';
+      nextEndStr = '${now.hour + 1}:50';
+    }
 
     updateGlobalTimetable([
       TimetableEntry(

@@ -390,7 +390,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Upload your PDF or PNG syllabus to generate your daily schedule instantly.',
+              'Upload timetable to schedule days',
               style: GoogleFonts.urbanist(fontSize: 15, color: const Color(0xFF5F5370), height: 1.4),
             ),
             const SizedBox(height: 24),
@@ -403,7 +403,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => UploadTimetableScreen(
-                            onUpload: () => Navigator.pop(context),
+                            onUpload: () {
+                              Navigator.pop(context);
+                              _refreshCourses();
+                            },
                             onSkip: () => Navigator.pop(context),
                           ),
                         ),
@@ -423,8 +426,24 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             Center(
               child: TextButton(
-                onPressed: () {
-                  setState(() => _hasTimetable = true);
+                onPressed: () async {
+                  final addedDate = await showModalBottomSheet<DateTime>(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => Padding(
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).padding.top + 40,
+                      ),
+                      child: NewScheduleSheet(initialDate: _selectedDate),
+                    ),
+                  );
+                  if (addedDate != null && mounted) {
+                    setState(() {
+                      _selectedDate = DateTime(addedDate.year, addedDate.month, addedDate.day);
+                      _refreshCourses();
+                    });
+                  }
                 },
                 child: Text('Add manually', style: GoogleFonts.urbanist(color: const Color(0xFF4F4362), fontWeight: FontWeight.w600)),
               ),
@@ -1312,12 +1331,18 @@ class _CurrentClassExpandedCard extends StatelessWidget {
                   color: const Color(0xFF141414),
                 ),
               ),
-              Text(
-                '${(progress * 100).toInt()}% Elapsed',
-                style: GoogleFonts.urbanist(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF6E5A62),
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    '${(progress * 100).toInt()}% Elapsed',
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.urbanist(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF6E5A62),
+                    ),
+                  ),
                 ),
               ),
               Text(

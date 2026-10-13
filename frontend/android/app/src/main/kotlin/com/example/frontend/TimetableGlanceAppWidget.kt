@@ -561,188 +561,42 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
     @Composable
     private fun DefaultDayView(context: Context) {
         Column(
-            modifier = GlanceModifier.fillMaxSize()
+            modifier = GlanceModifier
+                .fillMaxSize()
+                .padding(vertical = 12.dp),
+            verticalAlignment = Alignment.Vertical.CenterVertically,
+            horizontalAlignment = Alignment.Horizontal.CenterHorizontally
         ) {
-            // Row 1: 10 AM - Theory Test (Takes proportional height)
-            Row(
-                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                verticalAlignment = Alignment.Vertical.CenterVertically
+            Box(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .defaultWeight()
+                    .background(ImageProvider(R.drawable.card_purple_bg))
+                    .padding(horizontal = 20.dp, vertical = 20.dp)
+                    .clickable(launchAppIntent(context)),
+                contentAlignment = Alignment.Center
             ) {
-                // Time Column
-                TimeLabel(hour = "10", amPm = "AM")
-                Spacer(modifier = GlanceModifier.width(12.dp))
-
-                // Theory Test Card (expands vertically to fill its slot)
-                Box(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .defaultWeight()
-                        .fillMaxHeight()
-                        .background(ImageProvider(R.drawable.card_pink_bg))
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                        .clickable(launchAppIntent(context)),
-                    contentAlignment = Alignment.CenterStart
+                Column(
+                    horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
+                    verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.Vertical.CenterVertically
-                    ) {
-                        Column(
-                            modifier = GlanceModifier.defaultWeight()
-                        ) {
-                            Text(
-                                text = "Theory Test",
-                                style = TextStyle(
-                                    color = color(Color(0xFF181818)),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                            Spacer(modifier = GlanceModifier.height(3.dp))
-                            Text(
-                                text = "10:00 – 11:00 AM · 1 Hour",
-                                style = TextStyle(
-                                    color = color(Color(0xFF42383D)),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Normal
-                                )
-                            )
-                        }
-
-                        // Room 244 Badge
-                        Box(
-                            modifier = GlanceModifier
-                                .background(ImageProvider(R.drawable.badge_room_bg))
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Room 244",
-                                style = TextStyle(
-                                    color = color(Color(0xFF262322)),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Divider 1 with balanced margin
-            Spacer(modifier = GlanceModifier.height(8.dp))
-            HorizontalLine()
-            Spacer(modifier = GlanceModifier.height(8.dp))
-
-            // Row 2: 11 AM - Free Time (Takes proportional height)
-            Row(
-                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                verticalAlignment = Alignment.Vertical.CenterVertically
-            ) {
-                TimeLabel(hour = "11", amPm = "AM")
-                Spacer(modifier = GlanceModifier.width(12.dp))
-
-                Box(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .defaultWeight()
-                        .fillMaxHeight()
-                        .background(ImageProvider(R.drawable.card_free_bg))
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .clickable(launchAppIntent(context)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
-                        verticalAlignment = Alignment.Vertical.CenterVertically
-                    ) {
-                        Text(
-                            text = "You have 2 hours",
-                            style = TextStyle(
-                                color = color(Color(0xFF6C6661)),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Normal
-                            )
+                    Text(
+                        text = "No Timetable Yet",
+                        style = TextStyle(
+                            color = color(Color(0xFF181818)),
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = GlanceModifier.height(2.dp))
-                        Text(
-                            text = "Free Time",
-                            style = TextStyle(
-                                color = color(Color(0xFF181818)),
-                                fontSize = 17.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                    )
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+                    Text(
+                        text = "Upload timetable to schedule days",
+                        style = TextStyle(
+                            color = color(Color(0xFF5F5878)),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Normal
                         )
-                    }
-                }
-            }
-
-            // Divider 2 with balanced margin
-            Spacer(modifier = GlanceModifier.height(8.dp))
-            HorizontalLine()
-            Spacer(modifier = GlanceModifier.height(8.dp))
-
-            // Row 3: 1 PM - Design Test (Takes proportional height)
-            Row(
-                modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
-                verticalAlignment = Alignment.Vertical.CenterVertically
-            ) {
-                TimeLabel(hour = "1", amPm = "PM")
-                Spacer(modifier = GlanceModifier.width(12.dp))
-
-                Box(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .defaultWeight()
-                        .fillMaxHeight()
-                        .background(ImageProvider(R.drawable.card_purple_bg))
-                        .padding(horizontal = 16.dp, vertical = 14.dp)
-                        .clickable(launchAppIntent(context)),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.Vertical.CenterVertically
-                    ) {
-                        Column(
-                            modifier = GlanceModifier.defaultWeight()
-                        ) {
-                            Text(
-                                text = "Design Test",
-                                style = TextStyle(
-                                    color = color(Color(0xFF181818)),
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                            Spacer(modifier = GlanceModifier.height(3.dp))
-                            Text(
-                                text = "1:00 – 2:00 PM · 1 Hour",
-                                style = TextStyle(
-                                    color = color(Color(0xFF383240)),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Normal
-                                )
-                            )
-                        }
-
-                        // Room 244 Badge
-                        Box(
-                            modifier = GlanceModifier
-                                .background(ImageProvider(R.drawable.badge_room_bg))
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Room 244",
-                                style = TextStyle(
-                                    color = color(Color(0xFF262322)),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            )
-                        }
-                    }
+                    )
                 }
             }
         }
@@ -1466,7 +1320,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 modifier = GlanceModifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Vertical.CenterVertically
             ) {
-                // Aligns exactly with the 26.dp time column below
+                // Aligns exactly with the 26.dp time column
                 Spacer(modifier = GlanceModifier.width(26.dp))
 
                 val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -1484,50 +1338,37 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
 
             Spacer(modifier = GlanceModifier.height(10.dp))
 
-            // Schedule Grid: 5 time rows (9a, 10a, 11a, 12p, 1p) filling the vertical height evenly
-            Column(
-                modifier = GlanceModifier.fillMaxWidth().defaultWeight()
+            Box(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .defaultWeight()
+                    .background(ImageProvider(R.drawable.card_purple_bg))
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .clickable(launchAppIntent(context)),
+                contentAlignment = Alignment.Center
             ) {
-                // 9a row
-                WeekGridRow(
-                    time = "9a",
-                    monContent = { GridBlock("Studio", R.drawable.chip_mint_bg, context) },
-                    thuContent = { GridBlock("Crit", R.drawable.chip_mint_bg, context) }
-                )
-
-                WeekDividerLine()
-
-                // 10a row
-                WeekGridRow(
-                    time = "10a",
-                    tueContent = { GridBlock("Theory", R.drawable.chip_pink_bg, context) },
-                    friContent = { GridBlock("Theory", R.drawable.chip_pink_bg, context) }
-                )
-
-                WeekDividerLine()
-
-                // 11a row
-                WeekGridRow(
-                    time = "11a",
-                    wedContent = { GridBlock("Lab", R.drawable.chip_peach_bg, context) }
-                )
-
-                WeekDividerLine()
-
-                // 12p row
-                WeekGridRow(
-                    time = "12p",
-                    wedContent = { GridBlock("Study", R.drawable.chip_peach_bg, context) }
-                )
-
-                WeekDividerLine()
-
-                // 1p row
-                WeekGridRow(
-                    time = "1p",
-                    thuContent = { GridBlock("Design", R.drawable.chip_purple_bg, context) },
-                    friContent = { GridBlock("Design", R.drawable.chip_purple_bg, context) }
-                )
+                Column(
+                    horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
+                    verticalAlignment = Alignment.Vertical.CenterVertically
+                ) {
+                    Text(
+                        text = "No Timetable Yet",
+                        style = TextStyle(
+                            color = color(Color(0xFF181818)),
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                    Spacer(modifier = GlanceModifier.height(4.dp))
+                    Text(
+                        text = "Upload timetable to schedule days",
+                        style = TextStyle(
+                            color = color(Color(0xFF5F5878)),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal
+                        )
+                    )
+                }
             }
         }
     }
@@ -1867,10 +1708,10 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
 
             // Upcoming Exam / Event summary card
             val todayEntry = entries.firstOrNull { it.day == todayKey } ?: entries.firstOrNull()
-            val cardTitle = todayEntry?.subject ?: "Theory Test"
-            val cardSubtitle = if (todayEntry != null) "${todayEntry.startTime} – ${todayEntry.endTime}" else "10:00 – 11:00 AM"
-            val cardRoom = todayEntry?.room?.ifEmpty { "Room 244" } ?: "Room 244"
-            val cardBg = if (todayEntry != null) getCardDrawable(todayEntry.colorCode, todayEntry.subject) else R.drawable.card_pink_bg
+            val cardTitle = todayEntry?.subject ?: "No Timetable Yet"
+            val cardSubtitle = if (todayEntry != null) "${todayEntry.startTime} – ${todayEntry.endTime}" else "Upload timetable to schedule days"
+            val cardRoom = todayEntry?.room?.ifEmpty { "Upload" } ?: "Upload"
+            val cardBg = if (todayEntry != null) getCardDrawable(todayEntry.colorCode, todayEntry.subject) else R.drawable.card_purple_bg
 
             Box(
                 modifier = GlanceModifier

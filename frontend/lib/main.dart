@@ -89,7 +89,7 @@ class AppShell extends StatefulWidget {
 class AppShellState extends State<AppShell> {
   int _selectedIndex = 0;
   late final Stream<User?> _authStream = AuthService().authStateChanges;
-  AppState _appState = hasUserUploadedTimetable ? AppState.home : AppState.upload;
+  AppState _appState = AppState.home;
   String? _checkedUid;
   bool _isCheckingCloud = false;
 
@@ -128,9 +128,10 @@ class AppShellState extends State<AppShell> {
           _isCheckingCloud = false;
         });
       } else {
-        // New user! Needs to upload timetable
+        // No timetable yet: keep state clean and empty
+        clearUserTimetable();
         setState(() {
-          _appState = AppState.upload;
+          _appState = AppState.home;
           _isCheckingCloud = false;
         });
       }
@@ -138,7 +139,7 @@ class AppShellState extends State<AppShell> {
       debugPrint('Cloud timetable check: $err');
       if (!mounted) return;
       setState(() {
-        _appState = hasUserUploadedTimetable ? AppState.home : AppState.upload;
+        _appState = AppState.home;
         _isCheckingCloud = false;
       });
     });
