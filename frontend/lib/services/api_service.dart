@@ -87,7 +87,111 @@ class ApiService {
     return null;
   }
 
-  /// Sends the uploaded timetable PDF or PNG/JPG image to the backend for AI extraction.
+  /// Step 1 — Upload the file to the server and get a short-lived file_token.
+  static Future<Map<String, dynamic>> sendFile(PlatformFile file) async {
+    final workingUrl = await findReachableUrl();
+    if (workingUrl == null) {
+      final customUrl = await getCustomBaseUrl();
+      final urls = <String>[
+        if (customUrl != null && customUrl.isNotEmpty) customUrl,
+        ...defaultCandidateUrls,
+      ];
+      throw Exception(
+        'Could not reach backend server at any endpoint.\n\n'
+        'Tested:\n${urls.map((u) => '• $u').join('\n')}\n\n'
+        'Troubleshooting:\n'
+        '1. Ensure phone & PC are on the same Wi-Fi (PC IP: 192.168.1.39)\n'
+        '2. Or if using USB: run "adb reverse tcp:8000 tcp:8000"\n'
+        '3. Tap "Server Settings" above to enter your PC\'s Wi-Fi IP address.',
+      );
+    }
+    debugPrint('Step 1: Sending file to $workingUrl/send-file/');
+    return await _doFilePost('$workingUrl/send-file/', file);
+  }
+
+
+  /// Step 2 — Check if the staged file is actually a timetable.
+  /// Returns {is_timetable, reasoning, file_token}.
+  static Future<Map<String, dynamic>> checkFile(String fileToken) async {
+    final workingUrl = await findReachableUrl();
+    if (workingUrl == null) throw Exception('Backend not reachable.');
+
+    debugPrint('Step 2: Checking file token $fileToken at $workingUrl/check-file/');
+    final uri = Uri.parse('$workingUrl/check-file/');
+    final headers = <String, String>{'Content-Type': 'application/json'};
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final idToken = await user.getIdToken();
+        if (idToken != null && idToken.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $idToken';
+        }
+      }
+    } catch (e) {
+      debugPrint('Notice: unable to fetch Firebase token: $e');
+    }
+
+    final response = await http.post(
+      uri,
+      headers: headers,
+      body: '{"file_token":"$fileToken"}',
+    ).timeout(const Duration(seconds: 35));
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      String errorMessage = 'Server error (${response.statusCode})';
+      try {
+        final errJson = jsonDecode(response.body);
+        if (errJson is Map && errJson.containsKey('detail')) {
+          errorMessage = errJson['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(errorMessage);
+    }
+  }
+
+  /// Step 3 — Run full AI extraction using the staged file_token.
+  static Future<Map<String, dynamic>> analyzeTimetableWithToken(String fileToken) async {
+    final workingUrl = await findReachableUrl();
+    if (workingUrl == null) throw Exception('Backend not reachable.');
+
+    debugPrint('Step 3: Analyzing timetable token $fileToken');
+    final uri = Uri.parse('$workingUrl/analyze-timetable/?file_token=$fileToken');
+    final request = http.MultipartRequest('POST', uri);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final idToken = await user.getIdToken();
+        if (idToken != null && idToken.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $idToken';
+        }
+      }
+    } catch (e) {
+      debugPrint('Notice: unable to fetch Firebase token: $e');
+    }
+
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 90));
+    final response = await http.Response.fromStream(streamedResponse);
+    debugPrint('Step 3 server responded with HTTP ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      String errorMessage = 'Server error (${response.statusCode})';
+      try {
+        final errJson = jsonDecode(response.body);
+        if (errJson is Map && errJson.containsKey('detail')) {
+          errorMessage = errJson['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(errorMessage);
+    }
+  }
+
+  /// Legacy: single-call upload (kept for backwards compatibility).
   static Future<Map<String, dynamic>> uploadTimetable(PlatformFile file) async {
     // 1. Fast probe to find which server is actually reachable
     final workingUrl = await findReachableUrl();
@@ -103,7 +207,7 @@ class ApiService {
         'Troubleshooting:\n'
         '1. Ensure phone & PC are on the same Wi-Fi (PC IP: 192.168.1.39)\n'
         '2. Or if using USB: run "adb reverse tcp:8000 tcp:8000"\n'
-        '3. Tap "Server Settings" above to enter your PC\'s Wi-Fi IP address.'
+        '3. Tap "Server Settings" above to enter your PC\'s Wi-Fi IP address.',
       );
     }
 
@@ -111,6 +215,7 @@ class ApiService {
     debugPrint('Uploading timetable to verified server $workingUrl...');
     return await _performUpload(workingUrl, file);
   }
+
 
   static Future<Map<String, dynamic>> _performUpload(String baseUrl, PlatformFile file) async {
     final uri = Uri.parse('$baseUrl/analyze-timetable/');
@@ -185,7 +290,67 @@ class ApiService {
     }
   }
 
-  /// Saves timetable entries directly to Firestore via backend /api/timetable/save
+  /// Generic multipart POST for a PlatformFile to any [url].
+  static Future<Map<String, dynamic>> _doFilePost(String url, PlatformFile file) async {
+    final uri = Uri.parse(url);
+    final request = http.MultipartRequest('POST', uri);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final idToken = await user.getIdToken();
+        if (idToken != null && idToken.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $idToken';
+        }
+      }
+    } catch (e) {
+      debugPrint('Notice: unable to fetch Firebase token: $e');
+    }
+
+    Uint8List? rawBytes = file.bytes;
+    if ((rawBytes == null || rawBytes.isEmpty) && file.path != null && !kIsWeb) {
+      try {
+        final f = io.File(file.path!);
+        if (await f.exists()) rawBytes = await f.readAsBytes();
+      } catch (e) {
+        debugPrint('Could not read bytes from file path: $e');
+      }
+    }
+
+    String filename = file.name;
+    if (!filename.contains('.')) {
+      final ext = file.extension ?? 'png';
+      filename = '$filename.$ext';
+    }
+
+    if (rawBytes != null && rawBytes.isNotEmpty) {
+      request.files.add(http.MultipartFile.fromBytes('file', rawBytes, filename: filename));
+    } else if (file.path != null && !kIsWeb) {
+      request.files.add(await http.MultipartFile.fromPath('file', file.path!, filename: filename));
+    } else {
+      throw Exception('Selected file has no readable data or path.');
+    }
+
+    debugPrint('POST $uri (${rawBytes?.length ?? 0} bytes)');
+    final streamedResponse = await request.send().timeout(const Duration(seconds: 60));
+    final response = await http.Response.fromStream(streamedResponse);
+    debugPrint('Response HTTP ${response.statusCode} from $uri');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } else {
+      String errorMessage = 'Server error (${response.statusCode})';
+      try {
+        final errJson = jsonDecode(response.body);
+        if (errJson is Map && errJson.containsKey('detail')) {
+          errorMessage = errJson['detail'].toString();
+        }
+      } catch (_) {}
+      throw Exception(errorMessage);
+    }
+  }
+
+
   static Future<bool> saveTimetable(List<TimetableEntry> entries, {String summary = ''}) async {
     final workingUrl = await findReachableUrl();
     if (workingUrl == null) return false;

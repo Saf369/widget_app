@@ -152,10 +152,6 @@ class AppShellState extends State<AppShell> {
         await HomeWidget.saveWidgetData<String>('active_tab', 'day');
       }
       await HomeWidget.updateWidget(
-        name: 'TimetableWidgetProvider',
-        qualifiedAndroidName: 'com.example.frontend.TimetableWidgetProvider',
-      );
-      await HomeWidget.updateWidget(
         name: 'TimetableGlanceWidgetReceiver',
         qualifiedAndroidName: 'com.example.frontend.TimetableGlanceWidgetReceiver',
       );

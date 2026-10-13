@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:file_picker/file_picker.dart';
 import '../models/schedule.dart';
 import '../services/api_service.dart';
+import 'loading_screen.dart';
 
 class UploadTimetableScreen extends StatefulWidget {
   final VoidCallback onUpload;
@@ -19,10 +20,12 @@ class UploadTimetableScreen extends StatefulWidget {
   State<UploadTimetableScreen> createState() => _UploadTimetableScreenState();
 }
 
+/// Tracks which phase of the 3-step AI pipeline we are in.
+enum _UploadPhase { idle, sending, checking, analyzing, success }
+
 class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
   PlatformFile? _selectedFile;
-  bool _isUploading = false;
-  String _uploadStatusMessage = 'Analyzing your timetable with Gemini AI...';
+  _UploadPhase _phase = _UploadPhase.idle;
 
   Future<void> _pickFile() async {
     try {
@@ -64,135 +67,176 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
     }
 
     setState(() {
-      _isUploading = true;
-      _uploadStatusMessage = 'Sending file to backend...';
+      _phase = _UploadPhase.sending;
     });
 
     try {
-      setState(() {
-        _uploadStatusMessage = 'Extracting schedule with AI...';
-      });
+      // ── STEP 1: Send File ─────────────────────────────────────────────────
+      final sendResult = await ApiService.sendFile(_selectedFile!);
+      final String fileToken = sendResult['file_token'] as String;
 
-      final data = await ApiService.uploadTimetable(_selectedFile!);
-      final bool isTimetable = data['is_timetable'] == true;
+      // ── STEP 2: Check File ────────────────────────────────────────────────
+      if (!mounted) return;
+      setState(() => _phase = _UploadPhase.checking);
 
-      if (isTimetable) {
-        final List<dynamic> entriesData = data['entries'] ?? [];
-        final entries = entriesData
-            .map((e) => TimetableEntry.fromJson(e as Map<String, dynamic>))
-            .toList();
+      final checkResult = await ApiService.checkFile(fileToken);
+      final bool isTimetable = checkResult['is_timetable'] == true;
 
-        if (entries.isEmpty) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No class sessions found in the timetable.'),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          }
-        } else {
-          // Save and broadcast to all screens
-          await updateGlobalTimetable(entries);
-
-          // Explicitly save to Firestore to guarantee cloud storage
-          try {
-            await ApiService.saveTimetable(entries, summary: data['reasoning']?.toString() ?? '');
-          } catch (e) {
-            debugPrint('Notice: Cloud Firestore sync: $e');
-          }
-
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.check_circle_rounded, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text('Loaded ${entries.length} classes into your schedule!')),
-                  ],
-                ),
-                backgroundColor: const Color(0xFF1E7E34),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-
-            // If this screen was pushed onto the navigation stack, pop back; else continue flow
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context, true);
-            } else {
-              widget.onUpload();
-            }
-          }
-        }
-      } else {
-        final String reason = data['reasoning'] ?? 'The uploaded file does not look like a timetable.';
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              title: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded, color: Color(0xFFE57E24), size: 28),
-                  const SizedBox(width: 8),
-                  Text('Not a Timetable', style: GoogleFonts.urbanist(fontWeight: FontWeight.w700)),
-                ],
-              ),
-              content: Text(
-                reason,
-                style: GoogleFonts.urbanist(fontSize: 15, height: 1.4, color: const Color(0xFF333333)),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text('Try Another File', style: GoogleFonts.urbanist(fontWeight: FontWeight.w600, color: const Color(0xFF111111))),
-                ),
-              ],
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Timetable upload error: $e');
-      if (mounted) {
+      if (!isTimetable) {
+        final String reason = checkResult['reasoning'] as String? ??
+            'The uploaded file does not appear to be a timetable.';
+        if (!mounted) return;
+        setState(() => _phase = _UploadPhase.idle);
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             title: Row(
               children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 28),
+                const Icon(Icons.warning_amber_rounded, color: Color(0xFFE57E24), size: 28),
                 const SizedBox(width: 8),
-                Text('Upload Failed', style: GoogleFonts.urbanist(fontWeight: FontWeight.w700)),
+                Text('Not a Timetable', style: GoogleFonts.urbanist(fontWeight: FontWeight.w700)),
               ],
             ),
-            content: Text(
-              e.toString().replaceAll('Exception:', '').trim(),
-              style: GoogleFonts.urbanist(fontSize: 15, height: 1.4, color: const Color(0xFF333333)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Please upload a timetable.',
+                  style: GoogleFonts.urbanist(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF111111),
+                  ),
+                ),
+                if (reason.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    reason,
+                    style: GoogleFonts.urbanist(
+                      fontSize: 14,
+                      height: 1.4,
+                      color: const Color(0xFF555555),
+                    ),
+                  ),
+                ],
+              ],
             ),
             actions: [
               TextButton(
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _showServerSettingsDialog();
-                },
-                child: Text('Server Settings', style: GoogleFonts.urbanist(fontWeight: FontWeight.w600, color: const Color(0xFF5A4E80))),
-              ),
-              TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: Text('Dismiss', style: GoogleFonts.urbanist(fontWeight: FontWeight.w600, color: const Color(0xFF111111))),
+                child: Text(
+                  'Try Another File',
+                  style: GoogleFonts.urbanist(
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF111111),
+                  ),
+                ),
               ),
             ],
           ),
         );
+        return;
       }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUploading = false;
-        });
+
+      // ── STEP 3: Analyze Timetable ─────────────────────────────────────────
+      if (!mounted) return;
+      setState(() {
+        _phase = _UploadPhase.analyzing;
+      });
+
+      final data = await ApiService.analyzeTimetableWithToken(fileToken);
+
+      final List<dynamic> entriesData = data['entries'] ?? [];
+      final entries = entriesData
+          .map((e) => TimetableEntry.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      if (entries.isEmpty) {
+        if (!mounted) return;
+        setState(() => _phase = _UploadPhase.idle);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No class sessions found in the timetable.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
       }
+
+      // ── SUCCESS ───────────────────────────────────────────────────────────
+      await updateGlobalTimetable(entries);
+
+      try {
+        await ApiService.saveTimetable(
+          entries,
+          summary: data['reasoning']?.toString() ?? '',
+        );
+      } catch (e) {
+        debugPrint('Notice: Cloud Firestore sync: $e');
+      }
+
+      if (!mounted) return;
+      setState(() => _phase = _UploadPhase.success);
+
+      // Show success briefly, then navigate to the LoadingScreen → home
+      await Future.delayed(const Duration(milliseconds: 1400));
+      if (!mounted) return;
+
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context, true);
+      } else {
+        // Push LoadingScreen on top; it will call widget.onUpload when complete
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 600),
+            pageBuilder: (_, __, ___) => LoadingScreen(onComplete: widget.onUpload),
+            transitionsBuilder: (_, anim, __, child) =>
+                FadeTransition(opacity: anim, child: child),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Timetable upload error: $e');
+      if (!mounted) return;
+      setState(() => _phase = _UploadPhase.idle);
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 28),
+              const SizedBox(width: 8),
+              Text('Upload Failed', style: GoogleFonts.urbanist(fontWeight: FontWeight.w700)),
+            ],
+          ),
+          content: Text(
+            e.toString().replaceAll('Exception:', '').trim(),
+            style: GoogleFonts.urbanist(fontSize: 15, height: 1.4, color: const Color(0xFF333333)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showServerSettingsDialog();
+              },
+              child: Text(
+                'Server Settings',
+                style: GoogleFonts.urbanist(fontWeight: FontWeight.w600, color: const Color(0xFF5A4E80)),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                'Dismiss',
+                style: GoogleFonts.urbanist(fontWeight: FontWeight.w600, color: const Color(0xFF111111)),
+              ),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -264,6 +308,38 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
         ],
       ),
     );
+  }
+
+  bool get _isUploading => _phase != _UploadPhase.idle && _phase != _UploadPhase.success;
+
+  String get _phaseLabel {
+    switch (_phase) {
+      case _UploadPhase.sending:
+        return 'Sending file to server...';
+      case _UploadPhase.checking:
+        return 'Checking if this is a timetable...';
+      case _UploadPhase.analyzing:
+        return 'Extracting your schedule with Gemini AI...';
+      case _UploadPhase.success:
+        return 'Schedule loaded! ✓';
+      case _UploadPhase.idle:
+        return '';
+    }
+  }
+
+  String get _buttonLabel {
+    switch (_phase) {
+      case _UploadPhase.sending:
+        return 'Sending file...';
+      case _UploadPhase.checking:
+        return 'Checking file...';
+      case _UploadPhase.analyzing:
+        return 'Analyzing timetable...';
+      case _UploadPhase.success:
+        return 'Schedule ready!';
+      case _UploadPhase.idle:
+        return _selectedFile != null ? 'Process with AI' : 'Upload timetable';
+    }
   }
 
   @override
@@ -503,21 +579,60 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
                       
                       const Spacer(),
 
-                      if (_isUploading) ...[
+
+
+                      // ── Phase Status Label ──────────────────────────────
+                      if (_phase != _UploadPhase.idle) ...[
                         Padding(
                           padding: const EdgeInsets.only(bottom: 12.0),
-                          child: Center(
-                            child: Text(
-                              _uploadStatusMessage,
-                              style: GoogleFonts.urbanist(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF4A3E5C)),
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (_phase != _UploadPhase.success)
+                                    const SizedBox(
+                                      width: 14, height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 1.8,
+                                        color: Color(0xFF4A3E5C),
+                                      ),
+                                    ),
+                                  if (_phase == _UploadPhase.success)
+                                    const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF1E7E34)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _phaseLabel,
+                                    style: GoogleFonts.urbanist(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: _phase == _UploadPhase.success
+                                          ? const Color(0xFF1E7E34)
+                                          : const Color(0xFF4A3E5C),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (_phase == _UploadPhase.analyzing) ...[
+                                const SizedBox(height: 5),
+                                Text(
+                                  'This may take a few seconds...',
+                                  style: GoogleFonts.urbanist(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: const Color(0xFF6B5E7D),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ],
                       
                       // Primary Action Button
                       GestureDetector(
-                        onTap: _isUploading ? null : _handleUpload,
+                        onTap: (_isUploading || _phase == _UploadPhase.success) ? null : _handleUpload,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 300),
                           padding: const EdgeInsets.all(8),
@@ -534,7 +649,7 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.only(left: 16.0),
                                   child: Text(
-                                    _isUploading ? 'Extracting Schedule...' : (hasFile ? 'Process with AI' : 'Upload timetable'),
+                                    _buttonLabel,
                                     style: GoogleFonts.urbanist(fontSize: 17, fontWeight: FontWeight.w500, color: Colors.white),
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -547,12 +662,14 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
                                   color: Colors.white,
                                   shape: BoxShape.circle,
                                 ),
-                                child: _isUploading
-                                    ? const Padding(
-                                        padding: EdgeInsets.all(12.0),
-                                        child: CircularProgressIndicator(color: Color(0xFF141414), strokeWidth: 2),
-                                      )
-                                    : const Icon(Icons.arrow_forward_rounded, color: Color(0xFF141414)),
+                                child: _phase == _UploadPhase.success
+                                    ? const Icon(Icons.check_rounded, color: Color(0xFF1E7E34))
+                                    : _isUploading
+                                        ? const Padding(
+                                            padding: EdgeInsets.all(12.0),
+                                            child: CircularProgressIndicator(color: Color(0xFF141414), strokeWidth: 2),
+                                          )
+                                        : const Icon(Icons.arrow_forward_rounded, color: Color(0xFF141414)),
                               ),
                             ],
                           ),

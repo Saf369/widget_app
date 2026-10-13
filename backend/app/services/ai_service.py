@@ -71,6 +71,83 @@ def detect_mime_type(filename: str, content_type: Optional[str] = None, file_byt
 
     raise ValueError(f"Unsupported file format: {ext or filename}. Please upload a PDF or PNG/JPG/WEBP image.")
 
+async def check_is_timetable(
+    file_bytes: bytes, filename: str, content_type: Optional[str] = None
+) -> dict:
+    """
+    Lightweight AI check: returns {is_timetable: bool, reasoning: str}.
+    Does NOT extract entries — much faster than full extraction.
+    """
+    mime_type = detect_mime_type(filename, content_type, file_bytes=file_bytes)
+    api_key = settings.get_gemini_api_key()
+
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY is not configured in backend environment.")
+
+    client = genai.Client(api_key=api_key)
+    file_part = types.Part.from_bytes(data=file_bytes, mime_type=mime_type)
+
+    check_prompt = (
+        "You are an expert at identifying academic timetables and class schedules.\n"
+        "Look at the provided document or image and answer ONLY these two things:\n"
+        "1. `is_timetable` (boolean): Is this a school/college/university timetable, "
+        "lecture schedule, course routine, or class schedule? Answer true if yes, false if no.\n"
+        "2. `reasoning` (string): A short, friendly 1-2 sentence explanation of your decision.\n\n"
+        "Examples that ARE timetables: weekly lecture schedule, course routine grid, "
+        "class timetable with days and times.\n"
+        "Examples that are NOT timetables: selfies, receipts, random documents, "
+        "menus, plain text without class times.\n\n"
+        "Respond ONLY with valid JSON: {\"is_timetable\": true/false, \"reasoning\": \"...\"}"
+    )
+
+    from pydantic import BaseModel
+
+    class TimetableCheckResponse(BaseModel):
+        is_timetable: bool
+        reasoning: str
+
+    preferred = settings.ai_model or "gemini-2.5-flash"
+    models_to_try = [preferred]
+    for candidate in ["gemini-2.5-flash", "gemini-3.8-flash"]:
+        if candidate not in models_to_try:
+            models_to_try.append(candidate)
+
+    response = None
+    last_error = None
+    for model_name in models_to_try:
+        try:
+            logger.info("Checking timetable with model: %s", model_name)
+            response = await asyncio.wait_for(
+                asyncio.to_thread(
+                    client.models.generate_content,
+                    model=model_name,
+                    contents=[file_part, check_prompt],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=TimetableCheckResponse,
+                        temperature=0.0,
+                    ),
+                ),
+                timeout=30.0,
+            )
+            if response and response.text:
+                logger.info("Timetable check completed with model %s", model_name)
+                break
+        except Exception as e:
+            logger.warning("Model %s check error: %s", model_name, e)
+            last_error = e
+
+    if not response or not response.text:
+        raise last_error or RuntimeError("Failed to check timetable with available models")
+
+    import json as _json
+    parsed = _json.loads(response.text)
+    return {
+        "is_timetable": bool(parsed.get("is_timetable", False)),
+        "reasoning": str(parsed.get("reasoning", "")),
+    }
+
+
 async def extract_timetable(file_bytes: bytes, filename: str, content_type: Optional[str] = None) -> TimetableAnalysisResponse:
     mime_type = detect_mime_type(filename, content_type, file_bytes=file_bytes)
     api_key = settings.get_gemini_api_key()

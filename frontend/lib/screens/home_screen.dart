@@ -6,6 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../models/schedule.dart';
 import 'upload_timetable_screen.dart';
 import 'schedule_screen.dart';
+import 'settings_screen.dart';
+import '../widgets/help_dialog.dart';
+import '../main.dart';
 
 // ── Models & Helpers ──────────────────────────────────────────────────────
 
@@ -226,6 +229,22 @@ class _HomeScreenState extends State<HomeScreen> {
     return null;
   }
 
+  void _openSearch(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SearchClassesSheet(
+        initialDate: _selectedDate,
+        onSelectDate: (date) {
+          setState(() {
+            _selectedDate = date;
+          });
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
@@ -292,6 +311,21 @@ class _HomeScreenState extends State<HomeScreen> {
                           setState(() {
                             _selectedDate = date;
                           });
+                        },
+                        onSearchTap: () => _openSearch(context),
+                        onReuploadTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UploadTimetableScreen(
+                                onUpload: () {
+                                  Navigator.pop(context);
+                                  _refreshCourses();
+                                },
+                                onSkip: () => Navigator.pop(context),
+                              ),
+                            ),
+                          );
                         },
                       ),
                     ),
@@ -599,8 +633,15 @@ class _HomeScreenState extends State<HomeScreen> {
 class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   final DateTime selectedDate;
   final ValueChanged<DateTime> onDateSelected;
+  final VoidCallback onSearchTap;
+  final VoidCallback onReuploadTap;
   
-  _HomeHeaderDelegate({required this.selectedDate, required this.onDateSelected});
+  _HomeHeaderDelegate({
+    required this.selectedDate,
+    required this.onDateSelected,
+    required this.onSearchTap,
+    required this.onReuploadTap,
+  });
 
   final double expandedHeight = 340;
   final double collapsedHeight = 192;
@@ -643,10 +684,80 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                 padding: const EdgeInsets.symmetric(horizontal: 22),
                 child: Row(
                   children: [
-                    Container(
-                      width: 54, height: 54,
-                      decoration: const BoxDecoration(color: Color(0xFFB9C2C7), shape: BoxShape.circle),
-                      child: const Icon(Icons.person, color: Colors.white, size: 28),
+                    GestureDetector(
+                      onTap: () {
+                        final shell = AppShell.of(context);
+                        if (shell != null) {
+                          shell.goToTab(4);
+                        } else {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                          );
+                        }
+                      },
+                      child: StreamBuilder<User?>(
+                        stream: () {
+                          try {
+                            return FirebaseAuth.instance.userChanges();
+                          } catch (_) {
+                            return null;
+                          }
+                        }(),
+                        builder: (context, snapshot) {
+                          User? user;
+                          try {
+                            user = snapshot.data ?? FirebaseAuth.instance.currentUser;
+                          } catch (_) {}
+                          final photoUrl = user?.photoURL;
+                          final initial = (user?.displayName?.isNotEmpty == true
+                                  ? user!.displayName![0]
+                                  : (user?.email?.isNotEmpty == true ? user!.email![0] : ''))
+                              .toUpperCase();
+
+                          return Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFFB9C2C7),
+                              border: Border.all(color: Colors.white.withOpacity(0.8), width: 2),
+                            ),
+                            child: ClipOval(
+                              child: photoUrl != null && photoUrl.isNotEmpty
+                                  ? Image.network(
+                                      photoUrl,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (context, error, stackTrace) => Center(
+                                        child: initial.isNotEmpty
+                                            ? Text(
+                                                initial,
+                                                style: GoogleFonts.urbanist(
+                                                  fontSize: 22,
+                                                  fontWeight: FontWeight.w700,
+                                                  color: Colors.white,
+                                                ),
+                                              )
+                                            : const Icon(Icons.person, color: Colors.white, size: 28),
+                                      ),
+                                    )
+                                  : Center(
+                                      child: initial.isNotEmpty
+                                          ? Text(
+                                              initial,
+                                              style: GoogleFonts.urbanist(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Icon(Icons.person, color: Colors.white, size: 28),
+                                    ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(width: 12),
                     if (progress > 0)
@@ -661,9 +772,111 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                       )
                     else
                       const Spacer(),
-                    const _GlassIconButton(icon: Icons.search_rounded),
+                    _GlassIconButton(
+                      icon: Icons.search_rounded,
+                      onTap: onSearchTap,
+                    ),
                     const SizedBox(width: 8),
-                    const _GlassIconButton(child: _ThreeDots(color: Color(0xFF1A1A1A))),
+                    Builder(
+                      builder: (btnContext) {
+                        return _GlassIconButton(
+                          child: const _ThreeDots(color: Color(0xFF1A1A1A)),
+                          onTap: () async {
+                            final renderBox = btnContext.findRenderObject() as RenderBox?;
+                            final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+                            if (renderBox == null || overlay == null) return;
+
+                            final buttonTopLeft = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
+                            final buttonBottomRight = renderBox.localToGlobal(renderBox.size.bottomRight(Offset.zero), ancestor: overlay);
+
+                            final position = RelativeRect.fromRect(
+                              Rect.fromLTRB(
+                                buttonTopLeft.dx,
+                                buttonBottomRight.dy + 14,
+                                buttonBottomRight.dx,
+                                buttonBottomRight.dy + 14,
+                              ),
+                              Offset.zero & overlay.size,
+                            );
+
+                            final selected = await showMenu<String>(
+                              context: context,
+                              position: position,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                              color: Colors.white,
+                              elevation: 8,
+                              items: [
+                                PopupMenuItem<String>(
+                                  value: 'help',
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFE8E1F0),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.help_outline_rounded,
+                                          color: Color(0xFF5A4E80),
+                                          size: 18,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Help',
+                                        style: GoogleFonts.urbanist(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF141414),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem<String>(
+                                  value: 'upload',
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 32,
+                                        height: 32,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFFE4F0EC),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.upload_file_rounded,
+                                          color: Color(0xFF2C6B3D),
+                                          size: 18,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Re-upload',
+                                        style: GoogleFonts.urbanist(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF141414),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            );
+
+                            if (!context.mounted) return;
+                            if (selected == 'help') {
+                              showAppHelpDialog(context);
+                            } else if (selected == 'upload') {
+                              onReuploadTap();
+                            }
+                          },
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -1491,19 +1704,24 @@ class _QuickActionBtn extends StatelessWidget {
 class _GlassIconButton extends StatelessWidget {
   final IconData? icon;
   final Widget? child;
-  const _GlassIconButton({this.icon, this.child});
+  final VoidCallback? onTap;
+  const _GlassIconButton({this.icon, this.child, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 54, height: 54,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.55),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
-      ),
-      child: Center(
-        child: child ?? Icon(icon, color: const Color(0xFF1A1A1A), size: 22),
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 54, height: 54,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.55),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
+        ),
+        child: Center(
+          child: child ?? Icon(icon, color: const Color(0xFF1A1A1A), size: 22),
+        ),
       ),
     );
   }
@@ -1618,3 +1836,396 @@ class _FreeTimeCard extends StatelessWidget {
     );
   }
 }
+
+// ── Search Sheet ───────────────────────────────────────────────────────────
+
+class _SearchClassesSheet extends StatefulWidget {
+  final DateTime initialDate;
+  final ValueChanged<DateTime> onSelectDate;
+
+  const _SearchClassesSheet({
+    required this.initialDate,
+    required this.onSelectDate,
+  });
+
+  @override
+  State<_SearchClassesSheet> createState() => _SearchClassesSheetState();
+}
+
+class _SearchClassesSheetState extends State<_SearchClassesSheet> {
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+  String? _selectedDayFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _query = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<TimetableEntry> get _filteredEntries {
+    final list = globalTimetable;
+    return list.where((entry) {
+      final normDay = TimetableEntry.normalizeDay(entry.day);
+      if (_selectedDayFilter != null && normDay != _selectedDayFilter) {
+        return false;
+      }
+      if (_query.isEmpty) return true;
+
+      final matchSubject = entry.subject.toLowerCase().contains(_query);
+      final matchRoom = entry.room.toLowerCase().contains(_query);
+      final matchInstructor = entry.instructor.toLowerCase().contains(_query);
+      final matchDay = TimetableEntry.toFullDay(entry.day).toLowerCase().contains(_query) ||
+          entry.day.toLowerCase().contains(_query);
+      final matchTime = entry.startTime.toLowerCase().contains(_query) ||
+          entry.endTime.toLowerCase().contains(_query);
+
+      return matchSubject || matchRoom || matchInstructor || matchDay || matchTime;
+    }).toList();
+  }
+
+  DateTime _dateForDay(String day) {
+    final now = DateTime.now();
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final Map<String, int> dayOffsets = {
+      'MON': 0,
+      'TUE': 1,
+      'WED': 2,
+      'THUR': 3,
+      'FRI': 4,
+      'SAT': 5,
+      'SUN': 6,
+    };
+    final offset = dayOffsets[TimetableEntry.normalizeDay(day)] ?? 0;
+    return DateTime(monday.year, monday.month, monday.day + offset);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final results = _filteredEntries;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: Color(0xFFF7F5F9),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Column(
+        children: [
+          const SizedBox(height: 12),
+          // Handle pill
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: const Color(0xFFD2CAD9),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Text(
+                  'Search Classes',
+                  style: GoogleFonts.urbanist(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF141414),
+                  ),
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black.withOpacity(0.06)),
+                    ),
+                    child: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF141414)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Search Bar Input
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.search_rounded, color: Color(0xFF5A4E80), size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      style: GoogleFonts.urbanist(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFF141414),
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Search subject, room, teacher...',
+                        hintStyle: GoogleFonts.urbanist(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w400,
+                          color: const Color(0xFF9E95A8),
+                        ),
+                        border: InputBorder.none,
+                      ),
+                    ),
+                  ),
+                  if (_query.isNotEmpty)
+                    GestureDetector(
+                      onTap: () => _searchController.clear(),
+                      child: const Icon(Icons.cancel_rounded, color: Color(0xFF9E95A8), size: 18),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Filter Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                _filterChip('All', _selectedDayFilter == null, () {
+                  setState(() => _selectedDayFilter = null);
+                }),
+                const SizedBox(width: 8),
+                for (final day in ['MON', 'TUE', 'WED', 'THUR', 'FRI', 'SAT']) ...[
+                  _filterChip(day, _selectedDayFilter == day, () {
+                    setState(() {
+                      _selectedDayFilter = _selectedDayFilter == day ? null : day;
+                    });
+                  }),
+                  const SizedBox(width: 8),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Results
+          Expanded(
+            child: results.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.search_off_rounded, size: 48, color: Color(0xFFB9B0C5)),
+                        const SizedBox(height: 12),
+                        Text(
+                          _query.isEmpty
+                              ? 'No classes found'
+                              : 'No matches for "$_query"',
+                          style: GoogleFonts.urbanist(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF4A3E5C),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Try searching for course title or room number',
+                          style: GoogleFonts.urbanist(
+                            fontSize: 13,
+                            color: const Color(0xFF867880),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                    itemCount: results.length,
+                    itemBuilder: (context, index) {
+                      final entry = results[index];
+                      final normDay = TimetableEntry.normalizeDay(entry.day);
+                      final fullDay = TimetableEntry.toFullDay(entry.day);
+                      final entryColor = _hexToColor(entry.colorCode, index);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.9)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              final targetDate = _dateForDay(entry.day);
+                              widget.onSelectDate(targetDate);
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Viewing $fullDay schedule'),
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: entryColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      _iconForSubject(entry.subject),
+                                      color: _darkenColor(entryColor),
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          entry.subject,
+                                          style: GoogleFonts.urbanist(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w700,
+                                            color: const Color(0xFF141414),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Text(
+                                              '${entry.startTime} - ${entry.endTime}',
+                                              style: GoogleFonts.urbanist(
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                                color: const Color(0xFF6B5E7D),
+                                              ),
+                                            ),
+                                            if (entry.room.isNotEmpty) ...[
+                                              const SizedBox(width: 8),
+                                              Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                                              const SizedBox(width: 8),
+                                              Flexible(
+                                                child: Text(
+                                                  entry.room,
+                                                  style: GoogleFonts.urbanist(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: const Color(0xFF6B5E7D),
+                                                  ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFECE6F4),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      normDay,
+                                      style: GoogleFonts.urbanist(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: const Color(0xFF5A4E80),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip(String label, bool isSelected, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF141414) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.urbanist(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : const Color(0xFF5B5B60),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

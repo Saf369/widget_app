@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'upload_timetable_screen.dart';
+import '../widgets/help_dialog.dart';
 import '../services/auth_service.dart';
 import '../main.dart';
 
@@ -115,42 +116,115 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 14),
-                        // Live avatar from Firebase Auth
-                        StreamBuilder<User?>(
-                          stream: AuthService().authStateChanges,
-                          builder: (context, snapshot) {
-                            final user = snapshot.data;
-                            final photoUrl = user?.photoURL;
-                            if (photoUrl != null && photoUrl.isNotEmpty) {
-                              return CircleAvatar(
-                                radius: 27,
-                                backgroundImage: NetworkImage(photoUrl),
-                              );
-                            }
-                            return Container(
-                              width: 54, height: 54,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFB9C2C7), shape: BoxShape.circle,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  (user?.displayName?.isNotEmpty == true
-                                      ? user!.displayName![0]
-                                      : (user?.email?.isNotEmpty == true
-                                          ? user!.email![0].toUpperCase()
-                                          : '?')),
-                                  style: GoogleFonts.urbanist(
-                                    fontSize: 22, fontWeight: FontWeight.w600,
-                                    color: Colors.white,
+                        const Spacer(),
+                        Builder(
+                          builder: (btnContext) {
+                            return _GlassIconButton(
+                              child: const _ThreeDots(color: Color(0xFF1A1A1A)),
+                              onTap: () async {
+                                final renderBox = btnContext.findRenderObject() as RenderBox?;
+                                final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+                                if (renderBox == null || overlay == null) return;
+
+                                final buttonTopLeft = renderBox.localToGlobal(Offset.zero, ancestor: overlay);
+                                final buttonBottomRight = renderBox.localToGlobal(renderBox.size.bottomRight(Offset.zero), ancestor: overlay);
+
+                                final position = RelativeRect.fromRect(
+                                  Rect.fromLTRB(
+                                    buttonTopLeft.dx,
+                                    buttonBottomRight.dy + 14,
+                                    buttonBottomRight.dx,
+                                    buttonBottomRight.dy + 14,
                                   ),
-                                ),
-                              ),
+                                  Offset.zero & overlay.size,
+                                );
+
+                                final selected = await showMenu<String>(
+                                  context: context,
+                                  position: position,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                  color: Colors.white,
+                                  elevation: 8,
+                                  items: [
+                                    PopupMenuItem<String>(
+                                      value: 'help',
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFE8E1F0),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.help_outline_rounded,
+                                              color: Color(0xFF5A4E80),
+                                              size: 18,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            'Help',
+                                            style: GoogleFonts.urbanist(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF141414),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuItem<String>(
+                                      value: 'upload',
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFE4F0EC),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.upload_file_rounded,
+                                              color: Color(0xFF2C6B3D),
+                                              size: 18,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Text(
+                                            'Re-upload',
+                                            style: GoogleFonts.urbanist(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w600,
+                                              color: const Color(0xFF141414),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                );
+
+                                if (!context.mounted) return;
+                                if (selected == 'help') {
+                                  showAppHelpDialog(context);
+                                } else if (selected == 'upload') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => UploadTimetableScreen(
+                                        onUpload: () => Navigator.pop(context),
+                                        onSkip: () => Navigator.pop(context),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
                             );
                           },
                         ),
-                        const Spacer(),
-                        const _GlassIconButton(child: _ThreeDots(color: Color(0xFF1A1A1A))),
                       ],
                     ),
                   ),
@@ -365,20 +439,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
 class _GlassIconButton extends StatelessWidget {
   final Widget child;
-  const _GlassIconButton({required this.child});
+  final VoidCallback? onTap;
+  const _GlassIconButton({required this.child, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.55),
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
-      ),
-      child: Center(
-        child: child,
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: 54,
+        height: 54,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.55),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(0.8), width: 1),
+        ),
+        child: Center(
+          child: child,
+        ),
       ),
     );
   }
