@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_dialogs.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -43,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
-      _showError('Please enter your email and password.');
+      _showError('Please enter your email and password.', title: 'Missing Information');
       return;
     }
 
@@ -52,7 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
       await AuthService().signInWithEmailPassword(email, password);
       if (mounted) widget.onLogin();
     } catch (e) {
-      if (mounted) _showError(_friendlyError(e.toString()));
+      if (mounted) _showError(_friendlyError(e.toString()), title: 'Login Failed');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -64,7 +65,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final cred = await AuthService().signInWithGoogle();
       if (cred != null && mounted) widget.onLogin();
     } catch (e) {
-      if (mounted) _showError('Google Sign-In failed: ${_friendlyError(e.toString())}');
+      if (mounted) _showError('Google Sign-In failed: ${_friendlyError(e.toString())}', title: 'Google Sign-In Failed');
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
@@ -73,33 +74,31 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleForgotPassword() async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      _showError('Enter your email above first, then tap Forgot password.');
+      _showError('Enter your email above first, then tap Forgot password.', title: 'Email Required');
       return;
     }
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Password reset email sent to $email'),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
+        showAppErrorDialog(
+          context: context,
+          title: 'Email Sent',
+          message: 'Password reset email sent to $email.',
+          icon: Icons.mark_email_read_rounded,
+          iconColor: const Color(0xFF1E7E34),
+          buttonText: 'OK',
         );
       }
     } catch (e) {
-      if (mounted) _showError(_friendlyError(e.toString()));
+      if (mounted) _showError(_friendlyError(e.toString()), title: 'Reset Failed');
     }
   }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        duration: const Duration(seconds: 4),
-      ),
+  void _showError(String msg, {String title = 'Notice'}) {
+    showAppErrorDialog(
+      context: context,
+      title: title,
+      message: msg,
     );
   }
 

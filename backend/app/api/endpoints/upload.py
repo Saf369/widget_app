@@ -4,7 +4,12 @@ import logging
 import uuid
 import time
 
-from app.services.ai_service import extract_timetable, check_is_timetable
+from app.services.ai_service import (
+    extract_timetable,
+    check_is_timetable,
+    GeminiRateLimitException,
+    is_gemini_rate_limit_error,
+)
 from app.services.firestore_service import firestore_service
 from app.core.config import settings
 
@@ -134,7 +139,19 @@ async def check_file(request: Request, body: Dict[str, Any] = Body(...)) -> Dict
             "reasoning": result["reasoning"],
             "file_token": file_token,
         }
+    except GeminiRateLimitException as rle:
+        logger.warning("Gemini rate limit in check_file: %s", rle)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Try again after some time limit hit",
+        )
     except Exception as e:
+        if is_gemini_rate_limit_error(e):
+            logger.warning("Gemini rate limit detected in check_file: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Try again after some time limit hit",
+            )
         logger.exception("Error during timetable check: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -236,10 +253,22 @@ async def analyze_timetable(
 
     except HTTPException:
         raise
+    except GeminiRateLimitException as rle:
+        logger.warning("Gemini rate limit in analyze_timetable: %s", rle)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Try again after some time limit hit",
+        )
     except ValueError as ve:
         logger.warning("Validation error analyzing timetable: %s", ve)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
     except Exception as e:
+        if is_gemini_rate_limit_error(e):
+            logger.warning("Gemini rate limit detected in analyze_timetable: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Try again after some time limit hit",
+            )
         logger.exception("Unexpected error analyzing timetable: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/schedule.dart';
+import '../widgets/app_dialogs.dart';
 import 'upload_timetable_screen.dart';
 
 const List<String> _months = [
@@ -1182,11 +1183,12 @@ class _NewScheduleSheetState extends State<NewScheduleSheet> {
   Future<void> _saveSchedule() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a title for the schedule.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppErrorDialog(
+        context: context,
+        title: 'Title Required',
+        message: 'Please enter a title for the schedule entry.',
+        icon: Icons.edit_note_rounded,
+        iconColor: const Color(0xFF5A4E80),
       );
       return;
     }

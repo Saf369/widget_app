@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:file_picker/file_picker.dart';
 import '../models/schedule.dart';
 import '../services/api_service.dart';
+import '../widgets/app_dialogs.dart';
 import 'loading_screen.dart';
 
 class UploadTimetableScreen extends StatefulWidget {
@@ -42,8 +43,11 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick file: $e')),
+        showAppErrorDialog(
+          context: context,
+          title: 'File Selection Error',
+          message: 'Failed to pick file: $e',
+          icon: Icons.folder_off_rounded,
         );
       }
     }
@@ -57,11 +61,12 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
 
   Future<void> _handleUpload() async {
     if (_selectedFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a PDF or image file first.'),
-          behavior: SnackBarBehavior.floating,
-        ),
+      showAppErrorDialog(
+        context: context,
+        title: 'No File Selected',
+        message: 'Please select a timetable PDF or image file first.',
+        icon: Icons.upload_file_rounded,
+        iconColor: const Color(0xFF5A4E80),
       );
       return;
     }
@@ -87,55 +92,13 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
             'The uploaded file does not appear to be a timetable.';
         if (!mounted) return;
         setState(() => _phase = _UploadPhase.idle);
-        showDialog(
+        showAppErrorDialog(
           context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            title: Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: Color(0xFFE57E24), size: 28),
-                const SizedBox(width: 8),
-                Text('Not a Timetable', style: GoogleFonts.urbanist(fontWeight: FontWeight.w700)),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Please upload a timetable.',
-                  style: GoogleFonts.urbanist(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF111111),
-                  ),
-                ),
-                if (reason.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    reason,
-                    style: GoogleFonts.urbanist(
-                      fontSize: 14,
-                      height: 1.4,
-                      color: const Color(0xFF555555),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: Text(
-                  'Try Another File',
-                  style: GoogleFonts.urbanist(
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF111111),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          title: 'Not a Timetable',
+          message: 'Please upload a timetable.\n\n$reason',
+          icon: Icons.warning_amber_rounded,
+          iconColor: const Color(0xFFE57E24),
+          buttonText: 'Try Another File',
         );
         return;
       }
@@ -156,11 +119,12 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
       if (entries.isEmpty) {
         if (!mounted) return;
         setState(() => _phase = _UploadPhase.idle);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No class sessions found in the timetable.'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        showAppErrorDialog(
+          context: context,
+          title: 'No Classes Found',
+          message: 'Gemini AI could not find any class sessions or lectures in this document. Please make sure the timetable is clear and legible.',
+          icon: Icons.event_busy_rounded,
+          iconColor: const Color(0xFFE57E24),
         );
         return;
       }
@@ -201,113 +165,34 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
       debugPrint('Timetable upload error: $e');
       if (!mounted) return;
       setState(() => _phase = _UploadPhase.idle);
-      showDialog(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 28),
-              const SizedBox(width: 8),
-              Text('Upload Failed', style: GoogleFonts.urbanist(fontWeight: FontWeight.w700)),
-            ],
-          ),
-          content: Text(
-            e.toString().replaceAll('Exception:', '').trim(),
-            style: GoogleFonts.urbanist(fontSize: 15, height: 1.4, color: const Color(0xFF333333)),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                _showServerSettingsDialog();
-              },
-              child: Text(
-                'Server Settings',
-                style: GoogleFonts.urbanist(fontWeight: FontWeight.w600, color: const Color(0xFF5A4E80)),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(
-                'Dismiss',
-                style: GoogleFonts.urbanist(fontWeight: FontWeight.w600, color: const Color(0xFF111111)),
-              ),
-            ),
-          ],
-        ),
-      );
+
+      if (ApiService.isRateLimit(e) || e is GeminiRateLimitException) {
+        final msg = e is GeminiRateLimitException
+            ? e.message
+            : (e.toString().contains('Try again after some time limit hit')
+                ? 'Try again after some time limit hit'
+                : 'The Gemini AI request quota has temporarily been reached. Please wait a short while and try again.');
+        showRateLimitDialog(
+          context: context,
+          message: msg,
+          onRetry: () => _handleUpload(),
+        );
+      } else if (ApiService.isConnectionError(e) || e is BackendConnectionException) {
+        showBackendConnectionDialog(
+          context: context,
+          message: e is BackendConnectionException
+              ? e.message
+              : e.toString().replaceAll('Exception:', '').trim(),
+          onRetry: () => _handleUpload(),
+        );
+      } else {
+        showAppErrorDialog(
+          context: context,
+          title: 'Upload Failed',
+          message: e.toString().replaceAll('Exception:', '').trim(),
+        );
+      }
     }
-  }
-
-  Future<void> _showServerSettingsDialog() async {
-    final currentCustom = await ApiService.getCustomBaseUrl();
-    final controller = TextEditingController(text: currentCustom ?? '');
-
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Row(
-          children: [
-            const Icon(Icons.dns_rounded, color: Color(0xFF5A4E80)),
-            const SizedBox(width: 8),
-            Text('Backend Server', style: GoogleFonts.urbanist(fontWeight: FontWeight.w700, fontSize: 18)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Enter your computer\'s IP or custom server URL (default: http://127.0.0.1:8000 via USB or http://192.168.1.39:8000 via Wi-Fi):',
-              style: GoogleFonts.urbanist(fontSize: 13, color: const Color(0xFF555555)),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                hintText: 'e.g. http://192.168.1.39:8000',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await ApiService.setCustomBaseUrl('');
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Reset to auto-detecting endpoints.')),
-                );
-              }
-            },
-            child: Text('Auto Detect', style: GoogleFonts.urbanist(color: Colors.grey[700])),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF141414),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            onPressed: () async {
-              await ApiService.setCustomBaseUrl(controller.text);
-              if (ctx.mounted) Navigator.pop(ctx);
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Server URL set to: ${controller.text.isEmpty ? "Auto Detect" : controller.text}')),
-                );
-              }
-            },
-            child: Text('Save', style: GoogleFonts.urbanist(fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
   }
 
   bool get _isUploading => _phase != _UploadPhase.idle && _phase != _UploadPhase.success;

@@ -48,6 +48,7 @@ import org.json.JSONArray
 
 val TabActionKey = ActionParameters.Key<String>("selected_tab")
 val DeltaActionKey = ActionParameters.Key<Int>("hour_delta")
+val MonthDeltaActionKey = ActionParameters.Key<Int>("month_delta")
 
 private fun color(c: Color) = ColorProvider(day = c, night = c)
 
@@ -261,6 +262,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
         val prefs = state.preferences
         val activeTab = prefs.getString("active_tab", "day") ?: "day"
         val hourOffset = prefs.getInt("hour_offset", 0)
+        val monthOffset = prefs.getInt("month_offset", 0)
         val entriesJson = prefs.getString("timetable_entries", null)
         val entries = parseGlanceEntries(entriesJson)
 
@@ -279,7 +281,11 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
 
         val locale = Locale.getDefault()
         val todayDateFormatted = SimpleDateFormat("EEE, d MMM yyyy", locale).format(calendar.time)
-        val monthFormatted = SimpleDateFormat("MMMM yyyy", locale).format(calendar.time)
+
+        val monthCal = (calendar.clone() as Calendar).apply {
+            add(Calendar.MONTH, monthOffset)
+        }
+        val monthFormatted = SimpleDateFormat("MMMM yyyy", locale).format(monthCal.time)
 
         val weekCalStart = (calendar.clone() as Calendar).apply {
             val dow = get(Calendar.DAY_OF_WEEK)
@@ -315,7 +321,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                         "hour" -> HourView(context = context, hourOffset = hourOffset, entries = entries, currentMinutes = currentMinutes, todayKey = todayKey)
                         "day" -> DayView(context = context, entries = entries, currentMinutes = currentMinutes, todayKey = todayKey)
                         "week" -> WeekView(context = context, weekCalStart = weekCalStart, todayCal = calendar, entries = entries)
-                        "month" -> MonthView(context = context, entries = entries, todayKey = todayKey, todayCal = calendar)
+                        "month" -> MonthView(context = context, entries = entries, todayKey = todayKey, todayCal = calendar, displayedCal = monthCal)
                         else -> DayView(context = context, entries = entries, currentMinutes = currentMinutes, todayKey = todayKey)
                     }
                 }
@@ -1710,11 +1716,72 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
         context: Context,
         entries: List<GlanceTimetableEntry>,
         todayKey: String,
-        todayCal: Calendar
+        todayCal: Calendar,
+        displayedCal: Calendar
     ) {
         Column(
             modifier = GlanceModifier.fillMaxSize()
         ) {
+            // Month navigation row with chevrons (< MMMM yyyy >) to move to and fro
+            Row(
+                modifier = GlanceModifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Vertical.CenterVertically
+            ) {
+                // Prev Month button (<)
+                Box(
+                    modifier = GlanceModifier
+                        .background(ImageProvider(R.drawable.circle_button_bg))
+                        .padding(5.dp)
+                        .clickable(
+                            actionRunCallback<NavigateMonthAction>(
+                                actionParametersOf(MonthDeltaActionKey to -1)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_chevron_left),
+                        contentDescription = "Previous Month",
+                        modifier = GlanceModifier.width(14.dp).height(14.dp)
+                    )
+                }
+
+                Box(
+                    modifier = GlanceModifier.defaultWeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(displayedCal.time),
+                        style = TextStyle(
+                            color = color(Color(0xFF181818)),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                }
+
+                // Next Month button (>)
+                Box(
+                    modifier = GlanceModifier
+                        .background(ImageProvider(R.drawable.circle_button_bg))
+                        .padding(5.dp)
+                        .clickable(
+                            actionRunCallback<NavigateMonthAction>(
+                                actionParametersOf(MonthDeltaActionKey to 1)
+                            )
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        provider = ImageProvider(R.drawable.ic_chevron_right),
+                        contentDescription = "Next Month",
+                        modifier = GlanceModifier.width(14.dp).height(14.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = GlanceModifier.height(6.dp))
+
             // Day names row
             Row(
                 modifier = GlanceModifier.fillMaxWidth(),
@@ -1727,24 +1794,44 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(8.dp))
+            Spacer(modifier = GlanceModifier.height(6.dp))
 
-            // Calendar rows
-            val weeks = listOf(
-                listOf("25", "26", "27", "28", "29", "30", "31"),
-                listOf("1", "2", "3", "4", "5", "6", "7"),
-                listOf("8", "9", "10", "11", "12", "13", "14"),
-                listOf("15", "16", "17", "18", "19", "20", "21")
-            )
-            val todayDateStr = todayCal.get(Calendar.DAY_OF_MONTH).toString()
+            // Dynamic calendar rows calculated from displayedCal
+            val firstDayCal = (displayedCal.clone() as Calendar).apply {
+                set(Calendar.DAY_OF_MONTH, 1)
+            }
+            val firstDow = firstDayCal.get(Calendar.DAY_OF_WEEK)
+            val startOffset = if (firstDow == Calendar.SUNDAY) 6 else firstDow - Calendar.MONDAY
+            val startCal = (firstDayCal.clone() as Calendar).apply {
+                add(Calendar.DAY_OF_MONTH, -startOffset)
+            }
+
+            val displayedMonth = displayedCal.get(Calendar.MONTH)
+            val todayMonth = todayCal.get(Calendar.MONTH)
+            val todayYear = todayCal.get(Calendar.YEAR)
+            val todayDay = todayCal.get(Calendar.DAY_OF_MONTH)
+
+            val weeks = mutableListOf<List<Triple<String, Boolean, Boolean>>>()
+            for (w in 0 until 4) {
+                val week = mutableListOf<Triple<String, Boolean, Boolean>>()
+                for (d in 0 until 7) {
+                    val dateStr = startCal.get(Calendar.DAY_OF_MONTH).toString()
+                    val isCurMonth = startCal.get(Calendar.MONTH) == displayedMonth
+                    val isToday = (todayYear == startCal.get(Calendar.YEAR) &&
+                                   todayMonth == startCal.get(Calendar.MONTH) &&
+                                   todayDay == startCal.get(Calendar.DAY_OF_MONTH))
+                    week.add(Triple(dateStr, isCurMonth, isToday))
+                    startCal.add(Calendar.DAY_OF_MONTH, 1)
+                }
+                weeks.add(week)
+            }
 
             weeks.forEach { week ->
                 Row(
                     modifier = GlanceModifier.fillMaxWidth().defaultWeight(),
                     verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
-                    week.forEach { date ->
-                        val isToday = date == todayDateStr
+                    week.forEach { (date, isCurMonth, isToday) ->
                         Box(
                             modifier = GlanceModifier.defaultWeight(),
                             contentAlignment = Alignment.Center
@@ -1765,7 +1852,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                                 Text(
                                     date,
                                     style = TextStyle(
-                                        color = color(if (date.toIntOrNull() != null && date.toInt() > 20 && week == weeks[0]) Color(0xFFB0AAA4) else Color(0xFF262322)),
+                                        color = color(if (isCurMonth) Color(0xFF262322) else Color(0xFFB0AAA4)),
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium
                                     )
@@ -1776,7 +1863,7 @@ class TimetableGlanceAppWidget : GlanceAppWidget() {
                 }
             }
 
-            Spacer(modifier = GlanceModifier.height(10.dp))
+            Spacer(modifier = GlanceModifier.height(8.dp))
 
             // Upcoming Exam / Event summary card
             val todayEntry = entries.firstOrNull { it.day == todayKey } ?: entries.firstOrNull()
@@ -1889,6 +1976,46 @@ class NavigateHourAction : ActionCallback {
         val current = prefs.getInt("hour_offset", 0)
         val newOffset = (current + delta).coerceIn(-5, 5)
         prefs.edit().putInt("hour_offset", newOffset).apply()
+
+        // Immediately update the tapped widget instance
+        updateAppWidgetState<HomeWidgetGlanceState>(
+            context = context,
+            definition = HomeWidgetGlanceStateDefinition(),
+            glanceId = glanceId
+        ) {
+            HomeWidgetGlanceState(prefs)
+        }
+        TimetableGlanceAppWidget().update(context, glanceId)
+
+        // Update any other widget instances
+        try {
+            val manager = GlanceAppWidgetManager(context)
+            val glanceIds = manager.getGlanceIds(TimetableGlanceAppWidget::class.java)
+            glanceIds.filter { it != glanceId }.forEach { id ->
+                updateAppWidgetState<HomeWidgetGlanceState>(
+                    context = context,
+                    definition = HomeWidgetGlanceStateDefinition(),
+                    glanceId = id
+                ) {
+                    HomeWidgetGlanceState(prefs)
+                }
+                TimetableGlanceAppWidget().update(context, id)
+            }
+        } catch (_: Exception) {}
+    }
+}
+
+class NavigateMonthAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        val delta = parameters[MonthDeltaActionKey] ?: parameters[DeltaActionKey] ?: 0
+        val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
+        val current = prefs.getInt("month_offset", 0)
+        val newOffset = current + delta
+        prefs.edit().putInt("month_offset", newOffset).apply()
 
         // Immediately update the tapped widget instance
         updateAppWidgetState<HomeWidgetGlanceState>(

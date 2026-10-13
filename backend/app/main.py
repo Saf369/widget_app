@@ -99,6 +99,16 @@ def health_check():
     return {"status": "ok", "environment": settings.app_env}
 
 
+from app.services.ai_service import GeminiRateLimitException
+
+@app.exception_handler(GeminiRateLimitException)
+async def gemini_rate_limit_exception_handler(request: Request, exc: GeminiRateLimitException):
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        content={"detail": "Try again after some time limit hit"},
+    )
+
+
 app.include_router(auth_router.router)
 app.include_router(upload.router)
 app.include_router(timetable.router)

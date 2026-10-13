@@ -13,8 +13,22 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseAuth? get _auth {
+    try {
+      return FirebaseAuth.instance;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  FirebaseFirestore? get _firestore {
+    try {
+      return FirebaseFirestore.instance;
+    } catch (_) {
+      return null;
+    }
+  }
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     serverClientId: const String.fromEnvironment(
       'GOOGLE_SERVER_CLIENT_ID',
@@ -22,8 +36,8 @@ class AuthService {
     ),
   );
 
-  User? get currentUser => _auth.currentUser;
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
+  User? get currentUser => _auth?.currentUser;
+  Stream<User?> get authStateChanges => _auth?.authStateChanges() ?? const Stream.empty();
 
   // ---------------------------------------------------------------------------
   // Firestore user document sync
@@ -31,8 +45,9 @@ class AuthService {
 
   /// Upserts a user document in Firestore under `users/{uid}`.
   Future<void> syncUserToFirestore(User user) async {
+    if (_firestore == null) return;
     try {
-      final docRef = _firestore.collection('users').doc(user.uid);
+      final docRef = _firestore!.collection('users').doc(user.uid);
       final snapshot = await docRef.get();
 
       final data = <String, dynamic>{
@@ -91,6 +106,7 @@ class AuthService {
   // Sign in with Google
   // ---------------------------------------------------------------------------
   Future<UserCredential?> signInWithGoogle() async {
+    if (_auth == null) throw Exception('Firebase is not initialized');
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null; // cancelled
@@ -101,7 +117,7 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth!.signInWithCredential(credential);
       final user = userCredential.user;
 
       if (user != null) {
@@ -119,7 +135,8 @@ class AuthService {
   // Sign in with Email & Password
   // ---------------------------------------------------------------------------
   Future<UserCredential> signInWithEmailPassword(String email, String password) async {
-    final userCredential = await _auth.signInWithEmailAndPassword(
+    if (_auth == null) throw Exception('Firebase is not initialized');
+    final userCredential = await _auth!.signInWithEmailAndPassword(
       email: email.trim(),
       password: password.trim(),
     );
@@ -139,7 +156,8 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final userCredential = await _auth.createUserWithEmailAndPassword(
+    if (_auth == null) throw Exception('Firebase is not initialized');
+    final userCredential = await _auth!.createUserWithEmailAndPassword(
       email: email.trim(),
       password: password.trim(),
     );
@@ -147,7 +165,7 @@ class AuthService {
     if (user != null) {
       await user.updateDisplayName(displayName.trim());
       await user.reload();
-      final refreshed = _auth.currentUser!;
+      final refreshed = _auth!.currentUser!;
       await syncUserToFirestore(refreshed);
       _syncToBackend(refreshed); // fire and forget
     }
@@ -162,6 +180,8 @@ class AuthService {
       await _googleSignIn.signOut();
     } catch (_) {}
     await clearUserTimetable();
-    await _auth.signOut();
+    if (_auth != null) {
+      await _auth!.signOut();
+    }
   }
 }

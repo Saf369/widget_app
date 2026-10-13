@@ -504,8 +504,25 @@ class _TimetableHomeWidgetUIState extends State<TimetableHomeWidgetUI> {
     final startOffset = firstWeekday - 1;
     final startDate = displayedMonth.subtract(Duration(days: startOffset));
 
-    return Column(
-      children: [
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragEnd: (details) {
+        if (details.primaryVelocity != null) {
+          if (details.primaryVelocity! < -100) {
+            // Swiped left -> move forward
+            setState(() {
+              _monthOffset++;
+            });
+          } else if (details.primaryVelocity! > 100) {
+            // Swiped right -> move backward
+            setState(() {
+              _monthOffset--;
+            });
+          }
+        }
+      },
+      child: Column(
+        children: [
         // Month navigation row with chevrons
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -640,6 +657,7 @@ class _TimetableHomeWidgetUIState extends State<TimetableHomeWidgetUI> {
           ),
         ),
       ],
-    );
-  }
+    ),
+  );
+}
 }

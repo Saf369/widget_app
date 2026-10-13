@@ -42,6 +42,37 @@ PASTEL_COLORS = [
 
 import asyncio
 
+class GeminiRateLimitException(Exception):
+    """Raised when Gemini API request limit or quota is exhausted."""
+    def __init__(self, message: str = "Try again after some time limit hit"):
+        super().__init__(message)
+
+
+def is_gemini_rate_limit_error(e: Optional[BaseException]) -> bool:
+    """Detects if an exception is caused by Gemini API rate limit or quota exhaustion."""
+    if e is None:
+        return False
+    if isinstance(e, GeminiRateLimitException):
+        return True
+    if getattr(e, "code", None) == 429 or getattr(e, "status_code", None) == 429:
+        return True
+    if getattr(e, "status", None) in ("RESOURCE_EXHAUSTED", "429"):
+        return True
+
+    err_str = str(e).lower()
+    keywords = [
+        "429",
+        "resource_exhausted",
+        "quota",
+        "rate limit",
+        "ratelimit",
+        "too many requests",
+        "limit hit",
+        "limit of the request",
+        "resource has been exhausted",
+    ]
+    return any(kw in err_str for kw in keywords)
+
 def detect_mime_type(filename: str, content_type: Optional[str] = None, file_bytes: Optional[bytes] = None) -> str:
     # 1. Magic bytes detection (handles Android content URIs or stripped extensions)
     if file_bytes:
@@ -114,6 +145,7 @@ async def check_is_timetable(
 
     response = None
     last_error = None
+    rate_limit_encountered = False
     for model_name in models_to_try:
         try:
             logger.info("Checking timetable with model: %s", model_name)
@@ -136,8 +168,12 @@ async def check_is_timetable(
         except Exception as e:
             logger.warning("Model %s check error: %s", model_name, e)
             last_error = e
+            if is_gemini_rate_limit_error(e):
+                rate_limit_encountered = True
 
     if not response or not response.text:
+        if rate_limit_encountered or is_gemini_rate_limit_error(last_error):
+            raise GeminiRateLimitException("Try again after some time limit hit")
         raise last_error or RuntimeError("Failed to check timetable with available models")
 
     import json as _json
@@ -187,6 +223,7 @@ async def extract_timetable(file_bytes: bytes, filename: str, content_type: Opti
 
     response = None
     last_error = None
+    rate_limit_encountered = False
     for model_name in models_to_try:
         try:
             logger.info(f"Extracting timetable using model: {model_name}")
@@ -209,8 +246,12 @@ async def extract_timetable(file_bytes: bytes, filename: str, content_type: Opti
         except Exception as e:
             logger.warning(f"Model {model_name} encountered error or timeout: {e}")
             last_error = e
+            if is_gemini_rate_limit_error(e):
+                rate_limit_encountered = True
 
     if not response or not response.text:
+        if rate_limit_encountered or is_gemini_rate_limit_error(last_error):
+            raise GeminiRateLimitException("Try again after some time limit hit")
         raise last_error or RuntimeError("Failed to extract timetable with available models")
 
     # Parse response

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../widgets/app_dialogs.dart';
 
 class RegisterScreen extends StatefulWidget {
   final VoidCallback onRegister;
@@ -44,11 +45,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final password = _passwordController.text.trim();
 
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
-      _showError('Please fill in all fields.');
+      _showError('Please fill in all fields.', title: 'Incomplete Fields');
       return;
     }
     if (password.length < 6) {
-      _showError('Password must be at least 6 characters.');
+      _showError('Password must be at least 6 characters.', title: 'Weak Password');
       return;
     }
 
@@ -66,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         widget.onRegister();
       }
     } catch (e) {
-      if (mounted) _showError(_friendlyError(e.toString()));
+      if (mounted) _showError(_friendlyError(e.toString()), title: 'Registration Failed');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -83,20 +84,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         widget.onRegister();
       }
     } catch (e) {
-      if (mounted) _showError('Google Sign-In failed: ${_friendlyError(e.toString())}');
+      if (mounted) _showError('Google Sign-In failed: ${_friendlyError(e.toString())}', title: 'Google Sign-In Failed');
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }
   }
 
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        duration: const Duration(seconds: 4),
-      ),
+  void _showError(String msg, {String title = 'Notice'}) {
+    showAppErrorDialog(
+      context: context,
+      title: title,
+      message: msg,
     );
   }
 

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'upload_timetable_screen.dart';
 import '../widgets/help_dialog.dart';
+import '../widgets/app_dialogs.dart';
 import '../services/auth_service.dart';
 import '../main.dart';
 
@@ -420,8 +421,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           );
                           if (confirm == true && context.mounted) {
-                            await AuthService().signOut();
-                            // StreamBuilder in main.dart will automatically redirect to LoginScreen
+                            try {
+                              await AuthService().signOut();
+                            } catch (e) {
+                              if (context.mounted) {
+                                showAppErrorDialog(
+                                  context: context,
+                                  title: 'Log Out Error',
+                                  message: 'Could not log out: $e',
+                                );
+                              }
+                            }
                           }
                         },
                       ),

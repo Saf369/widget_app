@@ -46,6 +46,16 @@ void main() {
     final prevMonth = DateTime(now.year, now.month - 1, 1);
     final prevMonthTitle = '${monthNames[prevMonth.month - 1]} ${prevMonth.year}';
     expect(find.text(prevMonthTitle), findsOneWidget);
+
+    // Fling left (forward) on the month view
+    await tester.fling(find.text(prevMonthTitle), const Offset(-300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text(currentMonthTitle), findsOneWidget);
+
+    // Fling right (backward) on the month view
+    await tester.fling(find.text(currentMonthTitle), const Offset(300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text(prevMonthTitle), findsOneWidget);
   });
 
   testWidgets('Hour, Day, Week, and Month tabs transition smoothly with AnimatedSwitcher', (WidgetTester tester) async {
