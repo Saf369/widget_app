@@ -63,7 +63,7 @@ class ApiService {
   }
 
   static Exception _parseErrorResponse(http.Response response) {
-    String errorMessage = 'Server error (${response.statusCode})';
+    String errorMessage = 'Processing error';
     try {
       final errJson = jsonDecode(response.body);
       if (errJson is Map && errJson.containsKey('detail')) {
@@ -78,6 +78,19 @@ class ApiService {
             : 'Try again after some time limit hit',
       );
     }
+
+    if (response.statusCode >= 500 ||
+        errorMessage.toLowerCase().contains('internal server error') ||
+        errorMessage.toLowerCase().contains('server error') ||
+        errorMessage.toLowerCase().contains('500') ||
+        errorMessage.toLowerCase().contains('503') ||
+        errorMessage.toLowerCase().contains('unavailable') ||
+        errorMessage.toLowerCase().contains('failed to process') ||
+        errorMessage.toLowerCase().contains('failed to check file') ||
+        errorMessage.toLowerCase().contains('processing error')) {
+      return Exception('Processing error');
+    }
+
     return Exception(errorMessage);
   }
 

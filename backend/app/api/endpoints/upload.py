@@ -155,7 +155,7 @@ async def check_file(request: Request, body: Dict[str, Any] = Body(...)) -> Dict
         logger.exception("Error during timetable check: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to check file: {str(e)}",
+            detail="Processing error",
         )
 
 
@@ -272,5 +272,5 @@ async def analyze_timetable(
         logger.exception("Unexpected error analyzing timetable: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process timetable: {str(e)}",
+            detail="Processing error",
         )

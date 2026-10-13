@@ -169,15 +169,13 @@ class _LoginScreenState extends State<LoginScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Container(
-                                    width: 52,
-                                    height: 52,
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF111113),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Center(
-                                      child: Icon(Icons.auto_awesome, color: Colors.white, size: 24),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(26),
+                                    child: Image.asset(
+                                      'assets/icons/app_logo.png',
+                                      width: 52,
+                                      height: 52,
+                                      fit: BoxFit.cover,
                                     ),
                                   ),
                                   ClipRRect(
@@ -410,27 +408,31 @@ class _LoginScreenState extends State<LoginScreen> {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'New here?',
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 13,
-                                              color: const Color(0xFF5D5873),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'New here?',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 13,
+                                                color: const Color(0xFF5D5873),
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 2),
-                                          Text(
-                                            'Create account',
-                                            style: GoogleFonts.plusJakartaSans(
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w500,
-                                              color: const Color(0xFF111113),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              'Create account',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 22,
+                                                fontWeight: FontWeight.w500,
+                                                color: const Color(0xFF111113),
+                                              ),
                                             ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
                                       Container(
                                         width: 48,
@@ -626,12 +628,16 @@ class _SocialPill extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Text(
-              isLoading ? '...' : label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF111113),
+            Flexible(
+              child: Text(
+                isLoading ? '...' : label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: const Color(0xFF111113),
+                ),
               ),
             ),
           ],

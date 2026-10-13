@@ -896,7 +896,10 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 24),
                             child: Builder(builder: (context) {
-                              final user = FirebaseAuth.instance.currentUser;
+                              User? user;
+                              try {
+                                user = FirebaseAuth.instance.currentUser;
+                              } catch (_) {}
                               final name = user?.displayName?.isNotEmpty == true
                                   ? user!.displayName!.split(' ').first
                                   : (user?.email?.isNotEmpty == true

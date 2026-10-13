@@ -15,6 +15,22 @@ Future<T?> showAppErrorDialog<T>({
   List<Widget>? extraActions,
   bool barrierDismissible = true,
 }) {
+  String displayTitle = title;
+  String displayMessage = message.trim();
+
+  final lowerMsg = displayMessage.toLowerCase();
+  final lowerTitle = displayTitle.toLowerCase();
+  if (lowerMsg.contains('internal server error') ||
+      lowerMsg.contains('server error (5') ||
+      lowerMsg.contains('server error') ||
+      lowerMsg.contains('503') ||
+      lowerMsg.contains('unavailable') ||
+      lowerMsg.contains('processing error') ||
+      lowerTitle.contains('processing error')) {
+    displayTitle = 'Processing Error';
+    displayMessage = 'Processing error';
+  }
+
   return showDialog<T>(
     context: context,
     barrierDismissible: barrierDismissible,
@@ -38,7 +54,7 @@ Future<T?> showAppErrorDialog<T>({
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              title,
+              displayTitle,
               style: GoogleFonts.urbanist(
                 fontWeight: FontWeight.w700,
                 fontSize: 20,
@@ -50,7 +66,7 @@ Future<T?> showAppErrorDialog<T>({
       ),
       content: SingleChildScrollView(
         child: Text(
-          message,
+          displayMessage,
           style: GoogleFonts.urbanist(
             fontSize: 14.5,
             height: 1.5,

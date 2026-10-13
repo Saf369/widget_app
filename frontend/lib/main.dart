@@ -176,11 +176,7 @@ class AppShellState extends State<AppShell> {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             backgroundColor: Color(0xFFECE8F4),
-            body: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation(Color(0xFF111113)),
-              ),
-            ),
+            body: SizedBox.expand(),
           );
         }
 

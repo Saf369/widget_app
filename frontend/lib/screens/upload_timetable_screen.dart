@@ -186,10 +186,20 @@ class _UploadTimetableScreenState extends State<UploadTimetableScreen> {
           onRetry: () => _handleUpload(),
         );
       } else {
+        final cleanMsg = e.toString().replaceAll('Exception:', '').trim();
+        final lower = cleanMsg.toLowerCase();
+        final isProcessing = lower.contains('processing error') ||
+            lower.contains('server error') ||
+            lower.contains('500') ||
+            lower.contains('503') ||
+            lower.contains('unavailable') ||
+            lower.contains('failed to process') ||
+            lower.contains('failed to check file');
+
         showAppErrorDialog(
           context: context,
-          title: 'Upload Failed',
-          message: e.toString().replaceAll('Exception:', '').trim(),
+          title: isProcessing ? 'Processing Error' : 'Upload Failed',
+          message: isProcessing ? 'Processing error' : cleanMsg,
         );
       }
     }

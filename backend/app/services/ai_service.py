@@ -137,9 +137,9 @@ async def check_is_timetable(
         is_timetable: bool
         reasoning: str
 
-    preferred = settings.ai_model or "gemini-2.5-flash"
+    preferred = settings.ai_model or "gemini-3.8-flash"
     models_to_try = [preferred]
-    for candidate in ["gemini-2.5-flash", "gemini-3.8-flash"]:
+    for candidate in ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-2.5-flash"]:
         if candidate not in models_to_try:
             models_to_try.append(candidate)
 
@@ -215,9 +215,9 @@ async def extract_timetable(file_bytes: bytes, filename: str, content_type: Opti
     )
 
     # Model priority: gemini-2.5-flash first (fastest and most stable), then gemini-3.8-flash
-    preferred = settings.ai_model or "gemini-2.5-flash"
+    preferred = settings.ai_model or "gemini-3.8-flash"
     models_to_try = [preferred]
-    for candidate in ["gemini-2.5-flash", "gemini-3.8-flash"]:
+    for candidate in ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash", "gemini-2.5-flash"]:
         if candidate not in models_to_try:
             models_to_try.append(candidate)
 

@@ -27,24 +27,23 @@ void main() {
     expect(find.byIcon(Icons.notifications_outlined), findsOneWidget);
     expect(find.byIcon(Icons.alarm_rounded), findsOneWidget);
 
-    // Verify COMING SOON badges (Notifications, Study reminders, AI Tutor)
-    expect(find.text('COMING SOON'), findsNWidgets(3));
+    // Verify COMING SOON badge for AI Tutor
+    expect(find.text('COMING SOON'), findsOneWidget);
 
-    // Verify all three are wrapped in Opacity (grayed out)
+    // Verify opacity for AI Tutor
     final opacityFinders = find.byType(Opacity);
     expect(opacityFinders, findsWidgets);
 
-    // Verify SharedPreferences remains false (disabled)
+    // Initial state is disabled
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getBool('settings_notifications') ?? false, isFalse);
     expect(prefs.getBool('settings_study_reminders') ?? false, isFalse);
 
-    // Tapping has no effect on toggling on
-    await tester.tap(find.text('Notifications'));
-    await tester.tap(find.text('Study reminders'));
+    // Toggle notifications on
+    final switchFinders = find.byWidgetPredicate((w) => w.runtimeType.toString() == '_ToggleSwitch');
+    expect(switchFinders, findsWidgets);
+    await tester.tap(switchFinders.first);
     await tester.pumpAndSettle();
-
-    expect(prefs.getBool('settings_notifications') ?? false, isFalse);
-    expect(prefs.getBool('settings_study_reminders') ?? false, isFalse);
+    expect(prefs.getBool('settings_notifications'), isTrue);
   });
 }

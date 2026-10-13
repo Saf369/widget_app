@@ -109,6 +109,15 @@ async def gemini_rate_limit_exception_handler(request: Request, exc: GeminiRateL
     )
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled server exception on %s: %s", request.url.path, exc)
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Processing error"},
+    )
+
+
 app.include_router(auth_router.router)
 app.include_router(upload.router)
 app.include_router(timetable.router)
