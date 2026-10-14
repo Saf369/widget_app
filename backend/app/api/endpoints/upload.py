@@ -240,7 +240,10 @@ async def analyze_timetable(
                         "summary": result.reasoning or "Extracted via Gemini AI",
                     })
                     result_dict["saved_to_firestore"] = saved
-                    logger.info("Auto-saved timetable to Firestore for user %s", user_id)
+                    if saved:
+                        logger.info("Auto-saved timetable to Firestore for user %s", user_id)
+                    else:
+                        logger.warning("Could not auto-save timetable to Firestore (Firestore not connected or save failed) for user %s", user_id)
                 except Exception as fe:
                     logger.warning("Failed to auto-save timetable for user %s: %s", user_id, fe)
                     result_dict["saved_to_firestore"] = False
