@@ -340,7 +340,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         icon: Icons.upload_file_rounded,
                         label: 'Upload new timetable (PDF / Image)',
                         trailing: const _ChevronTrailing(),
-                        isLast: true,
+                        isLast: false,
                         onTap: () {
                           Navigator.push(
                             context,
@@ -350,6 +350,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 onSkip: () => Navigator.pop(context),
                               ),
                             ),
+                          );
+                        },
+                      ),
+                      _SettingsItem(
+                        iconBg: const Color(0xFFCDE6E2),
+                        icon: Icons.dns_rounded,
+                        label: 'Backend server URL',
+                        trailing: const _ChevronTrailing(),
+                        isLast: true,
+                        onTap: () {
+                          showServerSettingsDialog(
+                            context: context,
+                            onSaved: () {
+                              if (mounted) setState(() {});
+                            },
                           );
                         },
                       ),
