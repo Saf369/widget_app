@@ -94,15 +94,19 @@ class ApiService {
     return Exception(errorMessage);
   }
 
+  static const String productionBaseUrl = 'https://widget-app-wnpa.onrender.com';
+
   static List<String> get defaultCandidateUrls {
     if (kIsWeb) {
       return const [
+        productionBaseUrl,
         'http://127.0.0.1:8000',
         'http://localhost:8000',
       ];
     }
     if (defaultTargetPlatform == TargetPlatform.android) {
       return const [
+        productionBaseUrl,            // Cloud Production Backend on Render (Global HTTPS)
         'http://127.0.0.1:8000',      // Physical Android device via USB (adb reverse)
         'http://192.168.1.39:8000',   // Physical Android device via Wi-Fi network
         'http://10.0.2.2:8000',       // Android Emulator host loopback
@@ -110,6 +114,7 @@ class ApiService {
       ];
     }
     return const [
+      productionBaseUrl,
       'http://127.0.0.1:8000',
       'http://localhost:8000',
       'http://192.168.1.39:8000',
@@ -149,7 +154,10 @@ class ApiService {
 
   static Future<bool> ping(String baseUrl) async {
     try {
-      final res = await http.get(Uri.parse('$baseUrl/health')).timeout(const Duration(milliseconds: 1500));
+      final timeoutDuration = baseUrl.contains('onrender.com') || baseUrl.startsWith('https://')
+          ? const Duration(seconds: 8)
+          : const Duration(milliseconds: 2500);
+      final res = await http.get(Uri.parse('$baseUrl/health')).timeout(timeoutDuration);
       return res.statusCode == 200;
     } catch (_) {
       return false;

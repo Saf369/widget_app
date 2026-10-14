@@ -9,14 +9,19 @@ logger = logging.getLogger(__name__)
 firebase_app = None
 
 def get_firebase_credentials():
-    # 1. Check for serviceAccountKey.json file in backend root or working directory
+    # 1. Check for serviceAccountKey.json file in backend root, Render secret files, or working directory
     possible_file_paths = [
+        os.getenv("GOOGLE_APPLICATION_CREDENTIALS", ""),
+        "/etc/secrets/serviceAccountKey.json",
+        "/etc/secrets/firebase_credentials.json",
         "serviceAccountKey.json",
         "firebase_credentials.json",
         os.path.join(os.path.dirname(__file__), "..", "..", "serviceAccountKey.json"),
         os.path.join(os.path.dirname(__file__), "..", "..", "firebase_credentials.json"),
     ]
     for p in possible_file_paths:
+        if not p:
+            continue
         abs_p = os.path.abspath(p)
         if os.path.exists(abs_p):
             logger.info(f"Loaded Firebase credentials from file: {abs_p}")
