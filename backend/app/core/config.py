@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     firebase_storage_bucket: str = ""
     ai_api_key: str = ""
     gemini_api_key: str = ""
-    ai_model: str = "gemini-3.8-flash"
+    ai_model: str = "gemini-2.5-flash"
     firebase_web_api_key: str = ""
     firebase_android_api_key: str = ""
     google_oauth_client_id: str = ""
