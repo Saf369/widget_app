@@ -1,3 +1,4 @@
+import sys
 import logging
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -50,6 +51,20 @@ app.add_middleware(
 
 
 # ---------------------------------------------------------------------------
+# Request Logging Middleware — logs every incoming HTTP request and response
+# ---------------------------------------------------------------------------
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info("--> [REQUEST] %s %s (from %s)", request.method, request.url.path, client_ip)
+    sys.stdout.flush()
+    response = await call_next(request)
+    logger.info("<-- [RESPONSE] %s %s -> HTTP %s", request.method, request.url.path, response.status_code)
+    sys.stdout.flush()
+    return response
+
+
+# ---------------------------------------------------------------------------
 # Auth middleware — verifies Firebase ID token for all non-public routes
 # ---------------------------------------------------------------------------
 @app.middleware("http")
@@ -96,6 +111,8 @@ async def firebase_auth_middleware(request: Request, call_next):
 # ---------------------------------------------------------------------------
 @app.get("/health", tags=["health"])
 def health_check():
+    logger.info("Health check ping received.")
+    sys.stdout.flush()
     return {"status": "ok", "environment": settings.app_env}
 
 
